@@ -1,0 +1,61 @@
+name: Windows build and source checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    name: Formatting and documentation
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install development formatter
+        run: python -m pip install --disable-pip-version-check clang-format==19.1.5
+      - name: Check C++ formatting
+        shell: pwsh
+        run: |
+          $formatter = Join-Path (python -c "import sysconfig; print(sysconfig.get_path('scripts'))") 'clang-format.exe'
+          ./tools/format.ps1 -Check -ClangFormat $formatter
+      - name: Check source-document links
+        run: python tools/check_docs.py
+
+  build:
+    name: x86 ${{ matrix.preset }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - preset: release
+            configuration: Release
+          - preset: debug
+            configuration: Debug
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure standalone x86 build
+        run: cmake --preset windows-x86
+      - name: Build DLL and all native test binaries
+        run: cmake --build --preset ${{ matrix.preset }}
+      # Hosted CI does not certify an interactive desktop or retail rendering.
+      - name: Run no-desktop unit tests
+        run: ctest --preset unit-${{ matrix.preset }}
+      - name: Install candidate package
+        run: cmake --install build/windows-x86 --config ${{ matrix.configuration }}
+      - name: Verify one DLL, x86 ABI and Windows-only imports
+        run: python tools/check_package.py dist/local
+      - name: Retain Release candidate
+        if: matrix.preset == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DAWindower-x86-candidate
+          path: dist/local/DAWindower.dll
+          if-no-files-found: error

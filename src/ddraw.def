@@ -1,0 +1,5 @@
+LIBRARY ddraw
+EXPORTS
+    DirectDrawCreate=_DAWindowerProxyCreate@12
+    DAWindowerShutdown=_DAWindowerShutdown@4
+    DAWindowerGetStats=_DAWindowerGetStats@4

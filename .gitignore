@@ -1,0 +1,9 @@
+/build*/
+/dist/
+/runtime-tests/
+*.user
+*.suo
+__pycache__/
+CMakeUserPresets.json
+/.vs/
+/.cache/

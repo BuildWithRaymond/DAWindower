@@ -1,0 +1,5 @@
+LIBRARY DAWindower
+EXPORTS
+    DAWindowerInitialize=_DAWindowerInitialize@4
+    DAWindowerShutdown=_DAWindowerShutdown@4
+    DAWindowerGetStats=_DAWindowerGetStats@4

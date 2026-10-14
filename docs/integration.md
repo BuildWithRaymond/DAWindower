@@ -1,0 +1,73 @@
+﻿# Launcher integration: one DLL, LoadLibraryA only
+
+Distribute **DAWindower.dll**, native x86. Replace the old dawnd resource or DLL
+path in your launcher with this file. There is no Talos/Zeus dependency, proxy,
+external configuration, companion DLL or supporting executable.
+
+## Standard launch sequence
+
+1. Create the 32-bit Dark Ages client suspended, as existing dawnd integrations do.
+2. Write the absolute, null-terminated DLL path into the target process.
+3. Start the usual remote thread at `LoadLibraryA` with that path as its argument.
+4. Wait for completion and verify the returned module handle is nonzero.
+5. Free the remote path buffer, close the injection thread handle, then resume
+   the client's main thread.
+
+**Do not call `DAWindowerInitialize`.** The first executable `DirectDrawCreate`
+call completes initialization itself before creating any wrapped graphics object.
+If initialization fails, that graphics call returns an error. The existing
+`CreateMutexA` singleton check is adapted earlier by a separate Kernel32-only gate.
+
+As with dawnd, finish injection before game startup. Late injection cannot replace
+objects already created. Verify remote API addresses for the target architecture;
+do not blindly reuse arbitrary local addresses across different-bitness processes.
+The acceptance helper mirrors the historical x86 launchers' actual sequence and
+records module paths and the injection thread's result. It is development code,
+not a runtime requirement or distributable component.
+
+A launcher with a fixed `dawnd.dll` path can rename this DLL to that name; the
+conflict guard permits its own module. Named-load regression covers this case.
+Preferred integration uses the delivered `DAWindower.dll` name. Do not also inject
+original dawnd or stack other renderer/window/input wrappers. Remove optional
+historical proxy routing from your integration before selecting this DLL.
+
+## Why loading alone works
+
+Original dawnd patches EXE imports inside process attach. Its only `DAWnd_v3`
+export is zero-initialized data, not an initializer function. Historical
+[Talos](https://github.com/adambraly/Talos/blob/3992da2d22c3bff3ae09bff06d52df3ecc76f177/Forms/MainForm.cs)
+and [Echo](https://github.com/Sichii/Echo/blob/36d0eeb0709b2e1bd2ba6fa494294fc5b88b72ff/External.cs)
+inject with remote LoadLibraryA; no call to that marker is needed. DAWindower
+reproduces this observable early-load contract without inventing a marker ABI.
+
+DllMain installs only a fixed, allocation-free IAT gate using bounded PE reads
+and atomic Kernel32 pointer swaps. Full DLL loading, COM/GDI/window setup,
+application locking and logging happen on the first normal graphics call outside
+loader lock. The factory gate stays installed until the other imports are ready;
+its final replacement is atomic. A racing initialization worker is unnecessary.
+See [DLL initialization guidance](https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices).
+
+The contract targets the inspected executable's named v1 `DirectDrawCreate`
+import. Dynamic factory resolution, COM activation, calls originating inside
+another DLL's DllMain and other DirectDraw interface generations are not validated.
+An injector must not race running startup or reuse the DLL as a late renderer swap.
+
+## Optional exports
+
+The stable x86 exports use `DWORD WINAPI(void*)`:
+
+| Export | Contract |
+| --- | --- |
+| DAWindowerInitialize | Optional explicit initialization, null argument, idempotent; never required by the launcher |
+| DAWindowerShutdown | Optional controlled hook removal; ERROR_BUSY while objects/windows exist; quiesce graphics first |
+| DAWindowerGetStats | Optional size-initialized DAWindowerStats buffer; does not initialize rendering |
+
+Success returns zero. The module pins itself once initialized, so hook code cannot
+be unmapped while in use. Normal integration keeps it loaded until process exit;
+no shutdown call is needed. These exports are useful for development diagnostics,
+not steps in the standard injection sequence.
+
+Only this DLL is installed by CMake. Headers, source tests and documentation stay
+in the source repository. Review [loading/recovery evidence](standalone-validation.md)
+and [current resize validation](smooth-resize-validation.md) before wider rollout;
+a confirmed client fingerprint is not universal compatibility.

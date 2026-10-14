@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible loading, rendering, resizing or recovery problem.
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Describe what should happen, what happens instead, and which clients are affected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include launch/injection order and the exact interruption or resize operation.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Build and desktop details
+      description: DLL version/SHA256, client SHA256, Windows build, GPU, monitors and DPI. Say if a value is unknown.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and comparison
+      description: Relevant HRESULT/log excerpt, screenshot or test result. Note whether background clients are affected and whether dawnd behaves differently. Exclude credentials and game assets.
+  - type: textarea
+    id: verification
+    attributes:
+      label: Already checked
+      description: List tests or workarounds attempted. Separate observed results from assumptions and untested scenarios.

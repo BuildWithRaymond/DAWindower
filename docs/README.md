@@ -1,0 +1,31 @@
+# Documentation
+
+Start with the project [README](../README.md) and [contributor guide](../CONTRIBUTING.md).
+
+## Working guides
+
+| Guide | Read it when… |
+| --- | --- |
+| [Development](development.md) | Setting up tools, building, formatting, inspecting packages or enabling diagnostics. |
+| [Architecture](architecture.md) | Following a frame, changing hooks or checking lock/reference ownership. |
+| [Testing](testing.md) | Choosing a regression, running actual-client checks or recording a manual transition. |
+| [Launcher integration](integration.md) | Replacing a dawnd resource/injection path or inspecting the optional export ABI. |
+| [Changelog](../CHANGELOG.md) | Checking what changed across runtime versions. |
+| [Credits](../CREDITS.md) | Understanding dawnd's legacy and the research references. |
+
+## Acceptance and historical research
+
+These reports keep their original scope and dates. A statement about a prototype
+is not a requirement for today's standalone DLL.
+
+| Record | Scope |
+| --- | --- |
+| [Free resize and visible frame cursors](smooth-resize-validation.md) | Versions 0.2.1–0.2.2; current resize/cursor and exact package evidence. |
+| [Standalone loading and recovery](standalone-validation.md) | Version 0.2.0; actual injection, multiclient tests and recovery limits. |
+| [Recovery design](standalone-recovery-design.md) | Rationale for import gates, retained pixels and per-window recovery. |
+| [October 14 recovery assessment](rendering-recovery-assessment.md) | Historical pre-0.2.0 findings and proposed remedies. |
+| [Baseline investigation](investigation.md) | Inspected legacy binary/client fingerprints, API paths and research scope. |
+| [Prototype validation](validation.md) | Historical 0.1.x results, including explicit-init/proxy development paths. |
+
+Raw logs and binaries mentioned in reports are ignored local artifacts. Public
+source links point only to files included in this repository.

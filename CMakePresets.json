@@ -1,0 +1,49 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "windows-x86",
+      "displayName": "Windows x86 · Visual Studio 2022",
+      "description": "Static CRT, standalone DLL, native development tests; no proxy.",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "Win32",
+      "binaryDir": "${sourceDir}/build/windows-x86",
+      "installDir": "${sourceDir}/dist/local",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": { "BUILD_TESTING": true, "DAW_BUILD_PROXY_TESTS": false }
+    }
+  ],
+  "buildPresets": [
+    { "name": "release", "configurePreset": "windows-x86", "configuration": "Release" },
+    { "name": "debug", "configurePreset": "windows-x86", "configuration": "Debug" }
+  ],
+  "testPresets": [
+    {
+      "name": "release",
+      "displayName": "Release · full suite (interactive desktop)",
+      "configurePreset": "windows-x86",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 1, "noTestsAction": "error" }
+    },
+    {
+      "name": "debug",
+      "inherits": "release",
+      "displayName": "Debug · full suite (interactive desktop)",
+      "configuration": "Debug"
+    },
+    {
+      "name": "unit-release",
+      "inherits": "release",
+      "displayName": "Release · no-desktop unit tests",
+      "filter": { "include": { "label": "unit" } }
+    },
+    {
+      "name": "unit-debug",
+      "inherits": "unit-release",
+      "displayName": "Debug · no-desktop unit tests",
+      "configuration": "Debug"
+    }
+  ]
+}
