@@ -9,6 +9,8 @@ frames when the Windows desktop is interrupted.
 
 **Windows · x86 · C++17 · MIT · Windows system dependencies only**
 
+[![Windows build and source checks](https://github.com/BuildWithRaymond/DAWindower/actions/workflows/ci.yml/badge.svg)](https://github.com/BuildWithRaymond/DAWindower/actions/workflows/ci.yml)
+
 **[Download v0.2.2 preview](https://github.com/BuildWithRaymond/DAWindower/releases/tag/v0.2.2)** ·
 [GitHub repository](https://github.com/BuildWithRaymond/DAWindower)
 

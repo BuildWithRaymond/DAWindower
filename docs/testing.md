@@ -44,9 +44,11 @@ rendering. All native test binaries are built, but the `desktop` group is run
 locally on an interactive desktop. A CI artifact is a build candidate, not an
 automatically published or retail-accepted release.
 
-The workflow is authored; its build, preset, formatting, documentation and
-package checks have been exercised locally. Hosted checkout/artifact operations
-and a remote CI result are not established by this workspace's local validation.
+On 2026-10-14, the [initial public workflow run](https://github.com/BuildWithRaymond/DAWindower/actions/runs/38647995540)
+passed all three jobs: formatting/documentation, x86 Release and x86 Debug.
+This verifies hosted builds, unit tests and package checks. The full 13-contract
+desktop suite was verified separately on an interactive local desktop; it was
+not executed by the hosted workflow.
 
 ## Actual-client loading check
 

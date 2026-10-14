@@ -5,6 +5,8 @@ changes do not imply a newly tested retail release.
 
 ## Unreleased
 
+- Public GitHub repository and a v0.2.2 preview with the exact tested single-DLL
+  asset; initial hosted source/Debug/Release checks passed.
 - Community-focused README with dawnd credit and an evidence-backed comparison.
 - Contributor onboarding, architecture/code tour, development/testing guides,
   documentation index, and issue/PR templates.
