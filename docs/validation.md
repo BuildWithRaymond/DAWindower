@@ -3,6 +3,10 @@
 Historical 0.1.x validation record. Current standalone DLL evidence is in
 [standalone-validation.md](standalone-validation.md).
 
+Cursor and scaling experiments below describe particular test configurations and
+DAWindower prototype defects. They do not establish that dawnd users generally
+lack working cursor behavior, full-window graphics or native resize arrows.
+
 Automated coverage is deliberately narrow: geometry and mouse boundaries;
 real system DirectDraw offscreen RGB565; virtual primary/backbuffer Blt and Flip;
 RGB565 GDI color output and black bars; COM identity/interface rejection;

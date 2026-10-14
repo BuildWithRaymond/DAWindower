@@ -3,9 +3,9 @@
 **Dark Ages on your desktop. One DLL.**
 
 DAWindower is a native windowing and rendering compatibility layer for the
-32-bit Dark Ages client. It keeps the game's RGB565 graphics, gives windows room
-to resize, fixes the software-cursor presentation path, and recovers retained
-frames when the Windows desktop is interrupted.
+32-bit Dark Ages client. It focuses on rendering recovery across desktop
+interruptions and open-source maintenance while preserving familiar window,
+graphics, cursor and mouse behavior.
 
 **Windows · x86 · C++17 · MIT · Windows system dependencies only**
 
@@ -32,22 +32,21 @@ everyone who kept it in players' hands. [Credits and research acknowledgments](C
 
 ## What you get
 
-- **One standalone `DAWindower.dll`.** Ordinary early `LoadLibraryA` injection;
-  no extra initialization call, proxy DLL, configuration file, runtime package,
-  or launcher-specific dependency.
-- **Smooth resizing.** Width and height change independently in one-pixel steps.
-  Graphics fill the client area without black bars; non-4:3 sizes stretch proportions.
-- **Faithful game pixels.** The logical frame stays 640×480 RGB565. Nearest-neighbor
-  presentation avoids blur, and mouse coordinates use the same scale as the image.
-- **A coordinated software cursor.** Frame and cursor writes are presented together
-  so the cursor's erased-background intermediate frame stays off screen.
-- **Visible resize arrows.** Native Windows arrows appear on edges and corners,
-  remain during drag, and hand control back to the game's cursor inside.
 - **Automatic recovery per window.** Retained pixels, surface restoration and bounded
   presentation retries handle loss and desktop interruptions. Recovery watches secure
   desktop/UAC, lock/unlock, display/device changes and restore events for background clients too.
-- **Multiple clients.** Only the inspected game's singleton mutex is isolated per
-  process. Networking, gameplay and automation paths are not hooked.
+- **Open-source maintenance.** MIT C++17 source, documented ownership, reproducible
+  builds and regression tests make the implementation available to inspect and improve.
+- **Familiar single-DLL integration.** Ordinary early `LoadLibraryA` injection;
+  no extra initialization call, proxy DLL, configuration file, runtime package,
+  or launcher-specific dependency.
+
+dawnd already supplies windowed play, multiple clients, cursor handling,
+full-window graphics and native resize arrows. DAWindower preserves those
+expectations. Its logical frame stays 640×480 RGB565 with nearest-neighbor
+presentation and matching mouse mapping. Width and height can change independently;
+non-4:3 sizes stretch proportions. Networking, gameplay and automation paths are
+not hooked.
 
 ## What changes from dawnd
 
@@ -60,7 +59,6 @@ DAWindower's implementation differs from the inspected legacy binary.
 | Desktop presentation | Its converted-primary path draws into a separate real DirectDraw primary. | A retained RGB565 canvas presents through GDI into each window. |
 | Failed presentation | That private-primary path discards the presentation result; no repair path was found for the private surface. | Failed presentations retain the frame and retry with bounded backoff, even without new game writes. |
 | Lost surface content | No wrapper-owned pixel backup/repopulation was found in that path. | Completed pixel writes are retained; recovery reapplies color keys and keeps public COM identities stable. |
-| Software-cursor updates | Cursor artifacts were reproduced in the tested legacy setup. | Logical cursor reads/writes share the retained frame; presentation coalesces updates. |
 | Resizing | Full-window presentation, with 4:3 constraints in the inspected sizing handler. | Full-window presentation with independent, arbitrary client dimensions. |
 | Initialization | Import hooks are installed during process attach. | Only small import gates run at attach; full setup finishes synchronously at the first factory call outside loader lock. |
 | Contribution | Research examined a bundled binary; original source was not found in the references searched. | MIT source, documented ownership, reproducible builds, and regression tests are included. |

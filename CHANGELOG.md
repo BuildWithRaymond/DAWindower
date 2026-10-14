@@ -5,6 +5,9 @@ changes do not imply a newly tested retail release.
 
 ## Unreleased
 
+- Clarify community-facing comparisons: cursor handling, full-window graphics
+  and native resize arrows are existing dawnd behavior. Recovery and open-source
+  maintenance are the adoption reasons emphasized by this project.
 - Public GitHub repository and a v0.2.2 preview with the exact tested single-DLL
   asset; initial hosted source/Debug/Release checks passed.
 - Community-focused README with dawnd credit and an evidence-backed comparison.
