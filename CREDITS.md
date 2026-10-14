@@ -14,12 +14,6 @@ The legacy DLL is credited as an important predecessor. DAWindower's implementat
 is original C++ code; no dawnd binary or source is packaged. Its MIT license does
 not relicense dawnd or the game.
 
-The artifact examined during development was a bundled `DAWnd_v3` binary with
-SHA256 `6772726967951c472f7bae53aeb7d70ba2e38605af5f814f9b130c6f04b8e0d9`.
-Its PE timestamp is from 2007; that metadata describes this particular artifact,
-not dawnd's first release. An exact original release date could not be established
-from the examined files. Historical primary sources and additional credits are welcome.
-
 ## Research references
 
 These projects informed investigation and API comparisons. They are not runtime
