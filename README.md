@@ -27,8 +27,9 @@ staying power deserves respect.
 
 DAWindower carries that usefulness forward. The goal is familiar Dark Ages
 behavior with recoverable rendering, a dependable loading contract, and source
-that the next contributor can understand. Thank you to dawnd's creators and to
-everyone who kept it in players' hands. [Credits and research acknowledgments](CREDITS.md).
+that the next contributor can understand. Thank you to **Saraet, creator of
+dawnd.dll**, and to everyone who kept it in players' hands.
+[Credits and research acknowledgments](CREDITS.md).
 
 ## What you get
 

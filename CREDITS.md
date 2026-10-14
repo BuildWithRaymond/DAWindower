@@ -2,8 +2,11 @@
 
 ## dawnd and the Dark Ages community
 
+**Saraet — creator of dawnd.dll.** Thank you for a tool that became part of how
+generations of Dark Ages players used the game on their desktops.
+
 dawnd earned its place in this community through more than twenty years of use.
-Its creators, the people who shared it, and the launcher developers who kept it
+Saraet, the people who shared it, and the launcher developers who kept it
 available made windowed Dark Ages part of everyday play. DAWindower preserves
 that simple expectation: one small DLL, injected by the launcher you already use.
 
@@ -14,9 +17,8 @@ not relicense dawnd or the game.
 The artifact examined during development was a bundled `DAWnd_v3` binary with
 SHA256 `6772726967951c472f7bae53aeb7d70ba2e38605af5f814f9b130c6f04b8e0d9`.
 Its PE timestamp is from 2007; that metadata describes this particular artifact,
-not dawnd's first release. An exact original release date and author attribution
-could not be established from the examined files. Historical primary sources
-and corrected credits are welcome.
+not dawnd's first release. An exact original release date could not be established
+from the examined files. Historical primary sources and additional credits are welcome.
 
 ## Research references
 
