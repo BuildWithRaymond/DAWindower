@@ -55,6 +55,18 @@ a lifetime, lock, HRESULT or coordinate rule matters; do not narrate every line.
 Keep native API semantics and ABI names recognizable. Small methods are useful
 when they clarify a responsibility, not when they hide a straightforward call.
 
+Place code with the responsibility listed in the [source map](docs/architecture.md#runtime-source-map).
+Keep shared window behavior in `src/window/` and X-only launch work in `src/x/`.
+Use named values for internal roles and array bounds; keep native Windows/COM
+method names intact. Name declaration parameters so callers can understand
+pointer ownership, coordinate spaces and input/output roles without opening the implementation.
+
+Comments should explain constraints: loader-lock safety, lock order, borrowed
+handles, reentrant callbacks, or why a completed game operation cannot be retried.
+Remove dead helpers and reuse shared setup rather than retaining parallel copies.
+Preserve dated acceptance evidence; label superseded designs and update current
+guides when the source contract changes.
+
 New bug fixes should include a regression that fails for the original problem.
 Use existing fault-injection helpers for loss/recovery behavior. Do not add tests
 that merely repeat the implementation or claim synthetic coverage proves retail behavior.

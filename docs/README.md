@@ -10,7 +10,7 @@ Start with the project [README](../README.md) and [contributor guide](../CONTRIB
 | [Architecture](architecture.md) | Following a frame, changing hooks or checking lock/reference ownership. |
 | [Testing](testing.md) | Choosing a regression, running actual-client checks or recording a manual transition. |
 | [Launcher integration](integration.md) | Replacing a dawnd resource/injection path or inspecting the optional export ABI. |
-| [DAWindower X](x-edition.md) | Building the edition with extra client controls or adding a verified client-name profile. |
+| [DAWindower X](x-edition.md) | Building the edition with extra client controls or understanding host-owned window titles. |
 | [Screenshots](images/README.md) | Comparing the two editions and checking original captures, dimensions and scope. |
 | [Changelog](../CHANGELOG.md) | Checking what changed across runtime versions. |
 | [Credits](../CREDITS.md) | Understanding dawnd's legacy and the research references. |
@@ -34,3 +34,14 @@ is not a requirement for today's standalone DLL.
 
 Raw logs and binaries mentioned in reports are ignored local artifacts. Public
 source links point only to files included in this repository.
+
+## Design records
+
+These capture decisions at a specific point in development. Use the working
+guides above for the current integration and runtime contract.
+
+| Record | Status |
+| --- | --- |
+| [Window title ownership](designs/2026-10-15-window-title-ownership.md) | Current title contract and its verification: both editions display Windows window text. |
+| [Shared character title](designs/2026-10-15-shared-character-title.md) | Superseded; describes the removed character-memory reader. |
+| [Original X design](designs/2026-10-14-dawindower-x.md) | Historical; standard now shares the caption renderer, and neither edition reads character memory. |

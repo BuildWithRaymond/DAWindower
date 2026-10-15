@@ -4,7 +4,6 @@
 #include "caption.h"
 #include <algorithm>
 #include <cstdint>
-#include <cstdlib>
 
 namespace daw {
 namespace {

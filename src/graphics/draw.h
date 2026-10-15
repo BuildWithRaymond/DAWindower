@@ -35,41 +35,45 @@ class Draw final : public IDirectDraw {
         return native_;
     }
 
-    HRESULT wrap(IDirectDrawSurface*, DWORD caps, IDirectDrawSurface**);
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID, void**) override;
+    HRESULT wrap(IDirectDrawSurface* native, DWORD caps, IDirectDrawSurface** output);
+    // COM declarations follow the DirectDraw v1 interface order.
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID id, void** output) override;
     ULONG STDMETHODCALLTYPE AddRef() override;
     ULONG STDMETHODCALLTYPE Release() override;
     HRESULT STDMETHODCALLTYPE Compact() override;
-    HRESULT STDMETHODCALLTYPE CreateClipper(DWORD, IDirectDrawClipper**, IUnknown*) override;
-    HRESULT STDMETHODCALLTYPE CreatePalette(DWORD,
-                                            PALETTEENTRY*,
-                                            IDirectDrawPalette**,
-                                            IUnknown*) override;
-    HRESULT STDMETHODCALLTYPE CreateSurface(DDSURFACEDESC*,
-                                            IDirectDrawSurface**,
-                                            IUnknown*) override;
-    HRESULT STDMETHODCALLTYPE DuplicateSurface(IDirectDrawSurface*, IDirectDrawSurface**) override;
-    HRESULT STDMETHODCALLTYPE EnumDisplayModes(DWORD,
-                                               DDSURFACEDESC*,
-                                               void*,
-                                               LPDDENUMMODESCALLBACK) override;
-    HRESULT STDMETHODCALLTYPE EnumSurfaces(DWORD,
-                                           DDSURFACEDESC*,
-                                           void*,
-                                           LPDDENUMSURFACESCALLBACK) override;
+    HRESULT STDMETHODCALLTYPE CreateClipper(DWORD flags,
+                                            IDirectDrawClipper** output,
+                                            IUnknown* outer) override;
+    HRESULT STDMETHODCALLTYPE CreatePalette(DWORD flags,
+                                            PALETTEENTRY* entries,
+                                            IDirectDrawPalette** output,
+                                            IUnknown* outer) override;
+    HRESULT STDMETHODCALLTYPE CreateSurface(DDSURFACEDESC* input,
+                                            IDirectDrawSurface** output,
+                                            IUnknown* outer) override;
+    HRESULT STDMETHODCALLTYPE DuplicateSurface(IDirectDrawSurface* source,
+                                               IDirectDrawSurface** output) override;
+    HRESULT STDMETHODCALLTYPE EnumDisplayModes(DWORD flags,
+                                               DDSURFACEDESC* filter,
+                                               void* context,
+                                               LPDDENUMMODESCALLBACK callback) override;
+    HRESULT STDMETHODCALLTYPE EnumSurfaces(DWORD flags,
+                                           DDSURFACEDESC* filter,
+                                           void* context,
+                                           LPDDENUMSURFACESCALLBACK callback) override;
     HRESULT STDMETHODCALLTYPE FlipToGDISurface() override;
-    HRESULT STDMETHODCALLTYPE GetCaps(DDCAPS*, DDCAPS*) override;
-    HRESULT STDMETHODCALLTYPE GetDisplayMode(DDSURFACEDESC*) override;
-    HRESULT STDMETHODCALLTYPE GetFourCCCodes(DWORD*, DWORD*) override;
-    HRESULT STDMETHODCALLTYPE GetGDISurface(IDirectDrawSurface**) override;
-    HRESULT STDMETHODCALLTYPE GetMonitorFrequency(DWORD*) override;
-    HRESULT STDMETHODCALLTYPE GetScanLine(DWORD*) override;
-    HRESULT STDMETHODCALLTYPE GetVerticalBlankStatus(BOOL*) override;
-    HRESULT STDMETHODCALLTYPE Initialize(GUID*) override;
+    HRESULT STDMETHODCALLTYPE GetCaps(DDCAPS* hardware, DDCAPS* software) override;
+    HRESULT STDMETHODCALLTYPE GetDisplayMode(DDSURFACEDESC* desc) override;
+    HRESULT STDMETHODCALLTYPE GetFourCCCodes(DWORD* count, DWORD* codes) override;
+    HRESULT STDMETHODCALLTYPE GetGDISurface(IDirectDrawSurface** output) override;
+    HRESULT STDMETHODCALLTYPE GetMonitorFrequency(DWORD* value) override;
+    HRESULT STDMETHODCALLTYPE GetScanLine(DWORD* value) override;
+    HRESULT STDMETHODCALLTYPE GetVerticalBlankStatus(BOOL* value) override;
+    HRESULT STDMETHODCALLTYPE Initialize(GUID* guid) override;
     HRESULT STDMETHODCALLTYPE RestoreDisplayMode() override;
-    HRESULT STDMETHODCALLTYPE SetCooperativeLevel(HWND, DWORD) override;
-    HRESULT STDMETHODCALLTYPE SetDisplayMode(DWORD, DWORD, DWORD) override;
-    HRESULT STDMETHODCALLTYPE WaitForVerticalBlank(DWORD, HANDLE) override;
+    HRESULT STDMETHODCALLTYPE SetCooperativeLevel(HWND window, DWORD flags) override;
+    HRESULT STDMETHODCALLTYPE SetDisplayMode(DWORD width, DWORD height, DWORD bits) override;
+    HRESULT STDMETHODCALLTYPE WaitForVerticalBlank(DWORD flags, HANDLE event) override;
 };
 
 DDPIXELFORMAT rgb565();

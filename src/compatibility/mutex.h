@@ -2,5 +2,6 @@
 #include <windows.h>
 
 namespace daw {
-HANDLE WINAPI createClientMutex(LPSECURITY_ATTRIBUTES, BOOL, LPCSTR);
-}
+// Isolate the client's known singleton name by process; preserve other mutexes.
+HANDLE WINAPI createClientMutex(LPSECURITY_ATTRIBUTES attributes, BOOL owner, LPCSTR name);
+} // namespace daw

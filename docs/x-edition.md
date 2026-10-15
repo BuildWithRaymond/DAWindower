@@ -86,7 +86,8 @@ none is distributed.
 - [Shared caption](../src/window/caption.cpp): non-client painting, hit regions, UI lifetime,
   tooltip/menu actions and asynchronous launch ownership.
 - [Launch transaction](../src/x/launch.cpp): suspended child, injection, resume and failure cleanup.
-- [Approved design](designs/2026-10-14-dawindower-x.md): scope and implementation sequence.
+- [Window title ownership](designs/2026-10-15-window-title-ownership.md): current title contract and verification.
+- [Original X design](designs/2026-10-14-dawindower-x.md): historical scope and implementation sequence.
 
 The existing rendering, recovery, cursor and resizing contracts run for both
 editions, including ANSI/Unicode caption and accepted-title contracts. X adds extra frame controls

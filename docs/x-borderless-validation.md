@@ -3,6 +3,8 @@
 The later [icon/caption validation](icon-validation.md) supersedes this record's
 standard side-inset behavior and adds game icons to both editions. Results below
 remain scoped to their recorded binaries.
+Standard later adopted the shared gradient caption, and both editions now use
+[host-owned window titles](designs/2026-10-15-window-title-ownership.md).
 
 Candidate source version: 0.2.3, October 14, 2026. This work is separate from the
 immutable published 0.2.2 preview. Each edition still distributes exactly one

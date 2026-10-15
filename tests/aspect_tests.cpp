@@ -38,20 +38,21 @@ int main() {
     size = daw::aspectSize({641, 480}, AspectDriver::corner);
     check(size.width == 641 && size.height == 481,
           "corner follows closest native-aspect size without a dominant-axis breakpoint");
-    daw::PixelSize last{640, 480};
+    daw::PixelSize previousSize{640, 480};
     for (int step = 1; step <= 128; ++step) {
         size = daw::aspectSize({640 + step, 480}, AspectDriver::corner);
-        check(size.width >= last.width && size.height >= last.height &&
-                  size.width - last.width <= 1 && size.height - last.height <= 1,
+        check(size.width >= previousSize.width && size.height >= previousSize.height &&
+                  size.width - previousSize.width <= 1 && size.height - previousSize.height <= 1,
               "horizontal corner movement is continuous and monotonic");
-        last = size;
+        previousSize = size;
     }
-    last = daw::aspectSize({800, 600}, AspectDriver::corner);
+    previousSize = daw::aspectSize({800, 600}, AspectDriver::corner);
     for (int step = 1; step <= 128; ++step) {
         size = daw::aspectSize({800 + step, 600 - step}, AspectDriver::corner);
-        check(std::abs(size.width - last.width) <= 1 && std::abs(size.height - last.height) <= 1,
+        check(std::abs(size.width - previousSize.width) <= 1 &&
+                  std::abs(size.height - previousSize.height) <= 1,
               "mixed-direction corner motion cannot jump when dominant axis changes");
-        last = size;
+        previousSize = size;
     }
     size = daw::aspectSize({481, 701}, AspectDriver::fit);
     check(size.width == 481 && size.height == 361,

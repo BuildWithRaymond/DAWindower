@@ -28,12 +28,13 @@ unsigned diagnosticLines = 0;
 DWORD installCompatibilityImports() {
     const auto kernel = GetModuleHandleW(L"kernel32.dll");
     const auto nativeMutex = reinterpret_cast<void*>(GetProcAddress(kernel, "CreateMutexA"));
-    const auto mutexResult = daw::patchImport(GetModuleHandleW(nullptr),
-                                              "kernel32.dll",
-                                              "CreateMutexA",
-                                              daw::bootstrapTarget(1, nativeMutex),
-                                              reinterpret_cast<void*>(daw::createClientMutex),
-                                              patches);
+    const auto mutexResult =
+        daw::patchImport(GetModuleHandleW(nullptr),
+                         "kernel32.dll",
+                         "CreateMutexA",
+                         daw::bootstrapTarget(daw::mutexBootstrapGate, nativeMutex),
+                         reinterpret_cast<void*>(daw::createClientMutex),
+                         patches);
     if (!mutexResult)
         patches.back().original = nativeMutex;
     if (mutexResult && mutexResult != ERROR_PROC_NOT_FOUND)
@@ -214,13 +215,14 @@ extern "C" DWORD WINAPI DAWindowerInitialize(void* reserved) {
         // Replace the factory gate last, atomically. No interval exposes the
         // native factory while other graphics hooks are being initialized.
         if (!result)
-            result = daw::patchImport(
-                GetModuleHandleW(nullptr),
-                "ddraw.dll",
-                "DirectDrawCreate",
-                daw::bootstrapTarget(0, reinterpret_cast<void*>(daw::realCreateDraw)),
-                reinterpret_cast<void*>(daw::createDraw),
-                patches);
+            result =
+                daw::patchImport(GetModuleHandleW(nullptr),
+                                 "ddraw.dll",
+                                 "DirectDrawCreate",
+                                 daw::bootstrapTarget(daw::directDrawBootstrapGate,
+                                                      reinterpret_cast<void*>(daw::realCreateDraw)),
+                                 reinterpret_cast<void*>(daw::createDraw),
+                                 patches);
         if (!result)
             patches.back().original = reinterpret_cast<void*>(daw::realCreateDraw);
     } catch (const std::bad_alloc&) {

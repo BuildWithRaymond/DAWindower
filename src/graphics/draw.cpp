@@ -357,10 +357,6 @@ HRESULT WINAPI createDraw(GUID* guid, IDirectDraw** output, IUnknown* outer) {
         native->Release();
         return E_OUTOFMEMORY;
     }
-    if (!wrapper) {
-        native->Release();
-        return E_OUTOFMEMORY;
-    }
     *output = wrapper;
     return DD_OK;
 }

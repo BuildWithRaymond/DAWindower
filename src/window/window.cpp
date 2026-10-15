@@ -7,8 +7,8 @@
 #include "graphics/gdi.h"
 #include <commctrl.h>
 #include <windowsx.h>
-#include <algorithm>
 #include <cstring>
+#include <cwchar>
 #include <new>
 #include <emmintrin.h>
 #include <wtsapi32.h>
@@ -183,19 +183,20 @@ bool isPress(UINT message) {
 
 // Keep the host's window behavior running; intercept only compatibility work.
 // Any DefSubclassProc call may synchronously destroy the window and its binding.
-LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD_PTR reference) {
+LRESULT CALLBACK subclass(
+    HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR id, DWORD_PTR reference) {
     auto owner = reinterpret_cast<WindowOwner*>(reference);
     auto& state = *owner->state;
-    if (m == WM_NCDESTROY) {
+    if (message == WM_NCDESTROY) {
         owner->cursor.restore();
         if (state.recoveryTimer)
-            KillTimer(w, state.recoveryTimer);
-        WTSUnRegisterSessionNotification(w);
+            KillTimer(window, state.recoveryTimer);
+        WTSUnRegisterSessionNotification(window);
         state.hwnd.store(nullptr);
         state.presentationPending.store(false);
-        untrackWindow(w);
-        RemoveWindowSubclass(w, subclass, id);
-        const auto result = DefSubclassProc(w, m, a, b);
+        untrackWindow(window);
+        RemoveWindowSubclass(window, subclass, id);
+        const auto result = DefSubclassProc(window, message, wParam, lParam);
         --windows;
         // SetWindowLong/SetWindowPos can synchronously destroy the window.
         // The attachment stack owns this binding until those calls return.
@@ -205,123 +206,126 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
             delete owner;
         return result;
     }
-    if (m == WM_NCCALCSIZE && b) {
-        auto r = a ? &reinterpret_cast<NCCALCSIZE_PARAMS*>(b)->rgrc[0] : reinterpret_cast<RECT*>(b);
-        const auto requested = *r;
+    if (message == WM_NCCALCSIZE && lParam) {
+        auto rectangle = wParam ? &reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam)->rgrc[0]
+                                : reinterpret_cast<RECT*>(lParam);
+        const auto requested = *rectangle;
         auto retained = owner->state;
-        DefSubclassProc(w, m, a, b);
-        if (retained->hwnd.load() == w) {
-            *r = requested;
+        DefSubclassProc(window, message, wParam, lParam);
+        if (retained->hwnd.load() == window) {
+            *rectangle = requested;
         }
         return 0; // The shared caption subclass reserves its own strip.
     }
-    if (m == WM_SETCURSOR && reinterpret_cast<HWND>(a) == w) {
+    if (message == WM_SETCURSOR && reinterpret_cast<HWND>(wParam) == window) {
         auto& cursor = owner->cursor;
         auto shape =
-            cursor.sizing && cursor.shape ? cursor.shape : FrameCursor::resizeShape(LOWORD(b));
-        if (!shape && LOWORD(b) != HTCLIENT && LOWORD(b) != HTNOWHERE)
+            cursor.sizing && cursor.shape ? cursor.shape : FrameCursor::resizeShape(LOWORD(lParam));
+        if (!shape && LOWORD(lParam) != HTCLIENT && LOWORD(lParam) != HTNOWHERE)
             shape = LoadCursorW(nullptr, IDC_ARROW);
         if (shape) {
-            cursor.show(w, shape);
+            cursor.show(window, shape);
             return TRUE;
         }
         cursor.restore(); // The host continues to own its client-area cursor.
     }
-    if (m == WM_ENTERSIZEMOVE)
+    if (message == WM_ENTERSIZEMOVE)
         owner->cursor.sizing = true;
-    if (m == WM_EXITSIZEMOVE || m == WM_CANCELMODE || (m == WM_ACTIVATEAPP && !a) ||
-        (m == WM_ACTIVATE && LOWORD(a) == WA_INACTIVE) ||
-        (m == WM_NCMOUSELEAVE && !owner->cursor.sizing))
+    if (message == WM_EXITSIZEMOVE || message == WM_CANCELMODE ||
+        (message == WM_ACTIVATEAPP && !wParam) ||
+        (message == WM_ACTIVATE && LOWORD(wParam) == WA_INACTIVE) ||
+        (message == WM_NCMOUSELEAVE && !owner->cursor.sizing))
         owner->cursor.restore();
-    if (m == state.presentationMessage && a == reinterpret_cast<WPARAM>(&state)) {
+    if (message == state.presentationMessage && wParam == reinterpret_cast<WPARAM>(&state)) {
         if (state.presentationPending.exchange(false) && FAILED(state.present()))
             log(L"Queued presentation failed");
         return 0;
     }
-    if (m == WM_TIMER && a == state.recoveryTimer && state.recoveryTimer) {
+    if (message == WM_TIMER && wParam == state.recoveryTimer && state.recoveryTimer) {
         state.serviceRecovery();
         return 0;
     }
-    if (m == WM_DISPLAYCHANGE || m == WM_DEVICECHANGE || m == WM_WTSSESSION_CHANGE ||
-        m == WM_POWERBROADCAST || (m == WM_ACTIVATEAPP && a) ||
-        (m == WM_SIZE && a != SIZE_MINIMIZED))
+    if (message == WM_DISPLAYCHANGE || message == WM_DEVICECHANGE ||
+        message == WM_WTSSESSION_CHANGE || message == WM_POWERBROADCAST ||
+        (message == WM_ACTIVATEAPP && wParam) || (message == WM_SIZE && wParam != SIZE_MINIMIZED))
         state.recoveryHint();
-    if (m == WM_GETMINMAXINFO) {
+    if (message == WM_GETMINMAXINFO) {
         const bool attaching = owner->attaching;
         auto retained = owner->state;
-        const auto result = DefSubclassProc(w, m, a, b);
-        if (!attaching && retained->hwnd.load() == w) {
-            setSizingLimits(w, *reinterpret_cast<MINMAXINFO*>(b));
+        const auto result = DefSubclassProc(window, message, wParam, lParam);
+        if (!attaching && retained->hwnd.load() == window) {
+            setSizingLimits(window, *reinterpret_cast<MINMAXINFO*>(lParam));
         }
         return result;
     }
-    if (m == WM_SIZING || m == WM_WINDOWPOSCHANGING) {
+    if (message == WM_SIZING || message == WM_WINDOWPOSCHANGING) {
         const bool attaching = owner->attaching;
         auto retained = owner->state;
-        const auto result = DefSubclassProc(w, m, a, b);
-        if (!attaching && retained->hwnd.load() == w && b) {
-            if (m == WM_SIZING)
-                constrainSizing(w, static_cast<UINT>(a), *reinterpret_cast<RECT*>(b));
+        const auto result = DefSubclassProc(window, message, wParam, lParam);
+        if (!attaching && retained->hwnd.load() == window && lParam) {
+            if (message == WM_SIZING)
+                constrainSizing(
+                    window, static_cast<UINT>(wParam), *reinterpret_cast<RECT*>(lParam));
             else
-                constrainPosition(w, *reinterpret_cast<WINDOWPOS*>(b));
+                constrainPosition(window, *reinterpret_cast<WINDOWPOS*>(lParam));
         }
-        return m == WM_SIZING ? TRUE : result;
+        return message == WM_SIZING ? TRUE : result;
     }
-    if (m == WM_ERASEBKGND && state.frameAvailable())
+    if (message == WM_ERASEBKGND && state.frameAvailable())
         return 1;
-    if (m == WM_PAINT) {
+    if (message == WM_PAINT) {
         // Keep host paint callbacks running. If they draw a new frame, wait
         // for its queued presentation so cursor writes can finish first.
         // Otherwise repaint retained content immediately. The host may destroy HWND.
         auto retained = owner->state;
-        const auto result = DefSubclassProc(w, m, a, b);
-        if (retained->hwnd.load() == w && retained->frameAvailable() &&
+        const auto result = DefSubclassProc(window, message, wParam, lParam);
+        if (retained->hwnd.load() == window && retained->frameAvailable() &&
             !retained->presentationPending.load()) {
             retained->present();
         }
         return result;
     }
-    if (m == WM_PRINTCLIENT) {
-        RECT r{};
-        GetClientRect(w, &r);
-        if (!state.paint(reinterpret_cast<HDC>(a), r.right, r.bottom))
+    if (message == WM_PRINTCLIENT) {
+        RECT rectangle{};
+        GetClientRect(window, &rectangle);
+        if (!state.paint(reinterpret_cast<HDC>(wParam), rectangle.right, rectangle.bottom))
             ++failures;
         return 0;
     }
-    if (m == WM_SIZE || m == WM_DISPLAYCHANGE) {
-        traceWindow(w, m == WM_SIZE ? L"WM_SIZE" : L"WM_DISPLAYCHANGE");
-        InvalidateRect(w, nullptr, FALSE);
+    if (message == WM_SIZE || message == WM_DISPLAYCHANGE) {
+        traceWindow(window, message == WM_SIZE ? L"WM_SIZE" : L"WM_DISPLAYCHANGE");
+        InvalidateRect(window, nullptr, FALSE);
     }
-    if (m == WM_DPICHANGED) {
+    if (message == WM_DPICHANGED) {
         // This message is delivered only for a DPI-aware window. Never change the
         // process DPI context after its windows have been created.
-        const auto r = reinterpret_cast<const RECT*>(b);
-        SetWindowPos(w,
+        const auto rectangle = reinterpret_cast<const RECT*>(lParam);
+        SetWindowPos(window,
                      nullptr,
-                     r->left,
-                     r->top,
-                     r->right - r->left,
-                     r->bottom - r->top,
+                     rectangle->left,
+                     rectangle->top,
+                     rectangle->right - rectangle->left,
+                     rectangle->bottom - rectangle->top,
                      SWP_NOZORDER | SWP_NOACTIVATE);
-        InvalidateRect(w, nullptr, FALSE);
+        InvalidateRect(window, nullptr, FALSE);
         return 0;
     }
-    if (m >= WM_MOUSEFIRST && m <= WM_MOUSELAST) {
-        RECT r{};
-        GetClientRect(w, &r);
-        POINT p{GET_X_LPARAM(b), GET_Y_LPARAM(b)};
-        const bool wheel = m == WM_MOUSEWHEEL || m == WM_MOUSEHWHEEL;
+    if (message >= WM_MOUSEFIRST && message <= WM_MOUSELAST) {
+        RECT rectangle{};
+        GetClientRect(window, &rectangle);
+        POINT p{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+        const bool wheel = message == WM_MOUSEWHEEL || message == WM_MOUSEHWHEEL;
         if (wheel)
-            ScreenToClient(w, &p);
-        const auto mapped = toGame(viewport(r.right, r.bottom), p.x, p.y);
-        if (isPress(m) && !mapped.inside)
-            return m == WM_XBUTTONDOWN || m == WM_XBUTTONDBLCLK ? TRUE : 0;
+            ScreenToClient(window, &p);
+        const auto mapped = toGame(viewport(rectangle.right, rectangle.bottom), p.x, p.y);
+        if (isPress(message) && !mapped.inside)
+            return message == WM_XBUTTONDOWN || message == WM_XBUTTONDBLCLK ? TRUE : 0;
         p = {mapped.x, mapped.y};
         if (wheel)
-            ClientToScreen(w, &p); // WM_MOUSEWHEEL retains its screen-coordinate ABI.
-        b = MAKELPARAM(static_cast<SHORT>(p.x), static_cast<SHORT>(p.y));
+            ClientToScreen(window, &p); // WM_MOUSEWHEEL retains its screen-coordinate ABI.
+        lParam = MAKELPARAM(static_cast<SHORT>(p.x), static_cast<SHORT>(p.y));
     }
-    return DefSubclassProc(w, m, a, b);
+    return DefSubclassProc(window, message, wParam, lParam);
 }
 } // namespace
 

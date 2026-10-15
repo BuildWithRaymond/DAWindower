@@ -11,26 +11,27 @@ static void require(bool ok, const char* name) {
 
 int main() {
     using namespace daw;
-    auto v = viewport(1280, 720);
-    require(v.x == 0 && v.y == 0 && v.width == 1280 && v.height == 720,
+    auto view = viewport(1280, 720);
+    require(view.x == 0 && view.y == 0 && view.width == 1280 && view.height == 720,
             "wide client filled without bars");
-    auto p = toGame(v, 640, 360);
-    require(p.inside && p.x == 320 && p.y == 240, "scaled center");
-    p = toGame(v, 1279, 719);
-    require(p.inside && p.x == 639 && p.y == 479, "last source pixel");
-    p = toGame(v, -1, 360);
-    require(!p.inside && p.x < 0, "outside client does not become a game click");
-    require(!toGame(v, 1280, 360).inside, "exclusive right boundary");
-    v = viewport(1920, 1080);
-    require(v.width == 1920 && v.height == 1080 && v.x == 0 && v.y == 0,
+    auto point = toGame(view, 640, 360);
+    require(point.inside && point.x == 320 && point.y == 240, "scaled center");
+    point = toGame(view, 1279, 719);
+    require(point.inside && point.x == 639 && point.y == 479, "last source pixel");
+    point = toGame(view, -1, 360);
+    require(!point.inside && point.x < 0, "outside client does not become a game click");
+    require(!toGame(view, 1280, 360).inside, "exclusive right boundary");
+    view = viewport(1920, 1080);
+    require(view.width == 1920 && view.height == 1080 && view.x == 0 && view.y == 0,
             "entire widescreen client filled");
-    v = viewport(320, 300);
-    require(v.width == 320 && v.height == 300 && v.y == 0, "independent downscale axes");
-    v = viewport(800, 800);
-    require(v.width == 800 && v.height == 800 && v.y == 0, "square client filled without bars");
+    view = viewport(320, 300);
+    require(view.width == 320 && view.height == 300 && view.y == 0, "independent downscale axes");
+    view = viewport(800, 800);
+    require(view.width == 800 && view.height == 800 && view.y == 0,
+            "square client filled without bars");
     require(viewport(0, 0).width == 0, "minimized geometry");
     require(!toGame({}, -32768, 32767).inside, "empty viewport");
-    v = viewport(1, 1);
-    require(v.width == 1 && v.height == 1, "tiny window avoids division by zero");
+    view = viewport(1, 1);
+    require(view.width == 1 && view.height == 1, "tiny window avoids division by zero");
     std::puts("PASS: viewport and mouse mapping");
 }

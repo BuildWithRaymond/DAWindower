@@ -4,7 +4,31 @@ Read this before changing initialization, COM ownership or presentation. The
 renderer deliberately keeps the game's native RGB565 offscreens; it changes how
 the completed logical frame reaches the desktop.
 
-## Source map
+## Repository map
+
+| Path | Contents |
+| --- | --- |
+| `include/` | Public optional export ABI and pure viewport/aspect math contracts. |
+| `src/compatibility/` | Executable import gates, singleton isolation and scoped geometry adapters. |
+| `src/graphics/` | DirectDraw COM wrappers, surface snapshots/recovery and the logical GDI bridge. |
+| `src/window/` | Per-window canvas/presentation, geometry/input, native sizing, caption and icon handling. |
+| `src/cursor/` | Debug cursor-call observers. Shared counters/logging are in `main.cpp`; cursor composition lives in the GDI bridge and frame cursors in `window.cpp`. |
+| `src/x/` | X-only child launch transaction and export definition. The caption renderer is shared in `src/window/`. |
+| `tests/` | Native regression executables, synthetic resources and the X child-process fixture. See the [test map](testing.md#automated-test-map). |
+| `tools/` | Development checks and manual/native test harnesses; see the tool map below. |
+| `docs/` | Current guides and dated design/acceptance records, indexed in [Documentation](README.md). |
+| `.github/` | CI and contributor issue/PR templates. |
+
+`CMakeLists.txt` defines runtime and development targets; `CMakePresets.json`
+provides standard/X and Debug/Release commands. `.clang-format`, `.editorconfig`
+and `.gitattributes` define source formatting and text encoding.
+
+`build*/`, `dist/` and `runtime-tests/` are ignored local outputs. Sibling
+`research/` checkouts are investigation references outside this repository;
+none is a runtime or build dependency. Do not move their binaries, game assets
+or generated logs into the source tree.
+
+## Runtime source map
 
 | Responsibility | Files | Main contract |
 | --- | --- | --- |
@@ -17,6 +41,23 @@ the completed logical frame reaches the desktop.
 | Window lifetime and presentation | [window.cpp](../src/window/window.cpp), [window.h](../src/window/window.h) | Per-window canvas, queued presentation, desktop recovery hints and native frame cursors. |
 | Size/input math and retries | [geometry.cpp](../src/window/geometry.cpp), [sizing.cpp](../src/window/sizing.cpp), [retry.h](../src/graphics/retry.h) | One transform for pixels and input; bounded retry scheduling. |
 | Borderless layout and mode detection | [frame.cpp](../src/window/frame.cpp), [aspect.cpp](../src/window/aspect.cpp) | Windowed 4:3 resizing, no visible border, and launcher-owned fullscreen. |
+| Shared caption and game icon | [caption.cpp](../src/window/caption.cpp), [icon.cpp](../src/window/icon.cpp) | Host-owned title text, shared icon handles and HWND-thread non-client controls; X enables two extra actions. |
+| X child launch | [launch.cpp](../src/x/launch.cpp) | Worker owns only its newly created child and injects before resuming it. |
+| Cursor diagnostics | [diagnostics.cpp](../src/cursor/diagnostics.cpp), [diagnostics.h](../src/cursor/diagnostics.h) | Optional Debug cursor observers count calls and preserve LastError; shared counters/logging live in `main.cpp`. |
+
+## Development tool map
+
+| Tool | Purpose |
+| --- | --- |
+| [format.ps1](../tools/format.ps1) | Format/check C++ with clang-format 19; `-Check` leaves files unchanged. |
+| [check_docs.py](../tools/check_docs.py) | Check local Markdown links/anchors without network requests. |
+| [check_package.py](../tools/check_package.py) | Verify a single x86 DLL, system-only dependencies and the expected export names. |
+| [inspect_pe.py](../tools/inspect_pe.py) | Print PE32 headers, sections, imports, exports and SHA256 as JSON; also used by the package checker. |
+| [ddraw_harness.cpp](../tools/ddraw_harness.cpp) | Synthetic factory/loading/lifetime contracts, registered with CTest. |
+| [retail_loadlibrary_test.cpp](../tools/retail_loadlibrary_test.cpp) | Manual isolated `Darkages.exe` startup/injection check; never registered with CTest. |
+
+Run commands from the [development guide](development.md). Synthetic tests do not
+need retail assets; actual-client checks have a separate [acceptance workflow](testing.md#actual-client-loading-check).
 
 ## Loading and initialization
 

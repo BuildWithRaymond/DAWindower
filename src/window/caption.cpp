@@ -5,7 +5,6 @@
 #include "runtime.h"
 #include "window/icon.h"
 #include <commctrl.h>
-#include <dwmapi.h>
 #include <uxtheme.h>
 #include <windowsx.h>
 #include <algorithm>
@@ -29,8 +28,10 @@ constexpr int firstButton = 0;
 constexpr UINT_PTR frameId = 0x44414331;
 constexpr int firstButton = 2;
 #endif
-constexpr int buttonCount = 5 - firstButton;
+// Button values index layout and tooltip slots; the base edition skips X actions.
 enum class Button { none = -1, newClient, native, minimize, maximize, close };
+constexpr int buttonSlots = static_cast<int>(Button::close) + 1;
+constexpr int buttonCount = buttonSlots - firstButton;
 
 #ifdef DAW_X
 struct LaunchStatus {
@@ -52,12 +53,8 @@ unsigned __stdcall launchWorker(void* parameter) {
 #endif
 
 struct Layout {
-    RECT outer{}, client{}, caption{}, buttons[5]{};
+    RECT outer{}, client{}, caption{}, buttons[buttonSlots]{};
 };
-
-int captionHeight(HWND window) {
-    return frameCaptionHeight(window);
-}
 
 Layout layout(HWND w) {
     RECT screen{}, client{};
@@ -76,10 +73,10 @@ Layout layout(HWND w) {
     const int width =
         std::min<int>(MulDiv(36, GetDpiForWindow(w), 96),
                       std::max<LONG>(1, (l.caption.right - l.caption.left) / buttonCount));
-    for (int i = firstButton; i < 5; ++i)
-        l.buttons[i] = {l.caption.right - (5 - i) * width,
+    for (int i = firstButton; i < buttonSlots; ++i)
+        l.buttons[i] = {l.caption.right - (buttonSlots - i) * width,
                         l.caption.top,
-                        l.caption.right - (4 - i) * width,
+                        l.caption.right - (buttonSlots - i - 1) * width,
                         l.caption.bottom};
     return l;
 }
@@ -107,7 +104,7 @@ POINT localPoint(HWND w, LPARAM packed, bool clientCoordinates = false) {
 }
 
 Button buttonAt(const Layout& l, POINT p) {
-    for (int i = firstButton; i < 5; ++i)
+    for (int i = firstButton; i < buttonSlots; ++i)
         if (PtInRect(&l.buttons[i], p))
             return static_cast<Button>(i);
     return Button::none;
@@ -157,10 +154,7 @@ class Frame {
         if (refreshing || destroyed)
             return;
         refreshing = true;
-        const auto policy = DWMNCRP_DISABLED;
-        DwmSetWindowAttribute(window, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
-        const COLORREF noBorder = 0xfffffffe; // DWMWA_COLOR_NONE; optional on Windows 11.
-        DwmSetWindowAttribute(window, DWMWA_BORDER_COLOR, &noBorder, sizeof(noBorder));
+        removeVisibleFrame(window);
         SetWindowTheme(window, L"", L"");
         if (font)
             DeleteObject(font);
@@ -287,7 +281,7 @@ class Frame {
                       -1,
                       &text,
                       DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
-        for (int i = firstButton; i < 5; ++i) {
+        for (int i = firstButton; i < buttonSlots; ++i) {
             const auto b = static_cast<Button>(i);
             const auto& r = l.buttons[i];
             if (hot == b) {
@@ -515,35 +509,39 @@ struct Call {
     }
 };
 
-LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD_PTR reference) {
-    auto f = reinterpret_cast<Frame*>(reference);
-    Call keep(f);
-    if (m == WM_NCDESTROY) {
-        f->destroyed = true;
-        f->hideTip();
-        if (f->titleTimer)
-            KillTimer(w, f->titleTimer);
+LRESULT CALLBACK subclass(
+    HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR id, DWORD_PTR reference) {
+    auto frame = reinterpret_cast<Frame*>(reference);
+    Call keep(frame);
+    if (message == WM_NCDESTROY) {
+        frame->destroyed = true;
+        frame->hideTip();
+        if (frame->titleTimer)
+            KillTimer(window, frame->titleTimer);
 #ifdef DAW_X
-        if (f->launchTimer)
-            KillTimer(w, f->launchTimer);
+        if (frame->launchTimer)
+            KillTimer(window, frame->launchTimer);
 #endif
-        RemoveWindowSubclass(w, subclass, id);
-        return DefSubclassProc(w, m, a, b);
+        RemoveWindowSubclass(window, subclass, id);
+        return DefSubclassProc(window, message, wParam, lParam);
     }
-    if (m == WM_NCCALCSIZE && b) {
-        auto r = a ? &reinterpret_cast<NCCALCSIZE_PARAMS*>(b)->rgrc[0] : reinterpret_cast<RECT*>(b);
-        r->top = std::min(r->bottom, r->top + captionHeight(w));
+    if (message == WM_NCCALCSIZE && lParam) {
+        auto rectangle = wParam ? &reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam)->rgrc[0]
+                                : reinterpret_cast<RECT*>(lParam);
+        rectangle->top = std::min(rectangle->bottom, rectangle->top + frameCaptionHeight(window));
         return 0; // Caption only: game pixels reach both sides and bottom.
     }
-    if (m == WM_NCHITTEST) {
-        const auto l = layout(w);
-        const auto p = localPoint(w, b);
-        if (windowedFrame(w) && !IsZoomed(w)) {
-            const auto grip = std::max(4, MulDiv(6, GetDpiForWindow(w), 96));
+    if (message == WM_NCHITTEST) {
+        const auto captionLayout = layout(window);
+        const auto p = localPoint(window, lParam);
+        if (windowedFrame(window) && !IsZoomed(window)) {
+            const auto grip = std::max(4, MulDiv(6, GetDpiForWindow(window), 96));
             const bool left = p.x >= 0 && p.x < grip;
-            const bool right = p.x < l.outer.right && p.x >= l.outer.right - grip;
+            const bool right =
+                p.x < captionLayout.outer.right && p.x >= captionLayout.outer.right - grip;
             const bool top = p.y >= 0 && p.y < grip;
-            const bool bottom = p.y < l.outer.bottom && p.y >= l.outer.bottom - grip;
+            const bool bottom =
+                p.y < captionLayout.outer.bottom && p.y >= captionLayout.outer.bottom - grip;
             if (top && left)
                 return HTTOPLEFT;
             if (top && right)
@@ -561,7 +559,7 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
             if (bottom)
                 return HTBOTTOM;
         }
-        const auto button = buttonAt(l, p);
+        const auto button = buttonAt(captionLayout, p);
         if (button != Button::none) {
             if (button == Button::minimize)
                 return HTMINBUTTON;
@@ -571,96 +569,99 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
                 return HTCLOSE;
             return HTBORDER;
         }
-        if (PtInRect(&l.caption, p)) {
-            const auto icon = smallWindowIcon(w);
-            if (f->destroyed)
+        if (PtInRect(&captionLayout.caption, p)) {
+            const auto icon = smallWindowIcon(window);
+            if (frame->destroyed)
                 return HTNOWHERE;
-            const auto bounds = iconBounds(w, l);
+            const auto bounds = iconBounds(window, captionLayout);
             return icon && PtInRect(&bounds, p) ? HTSYSMENU : HTCAPTION;
         }
-        if (PtInRect(&l.client, p))
+        if (PtInRect(&captionLayout.client, p))
             return HTCLIENT;
     }
-    if (m == WM_NCPAINT) {
-        f->paint();
+    if (message == WM_NCPAINT) {
+        frame->paint();
         return 0;
     }
-    if (m == WM_NCACTIVATE) {
-        f->paint();
+    if (message == WM_NCACTIVATE) {
+        frame->paint();
         return TRUE;
     }
-    if (m == WM_NCMOUSEMOVE) {
-        f->hover(buttonAt(layout(w), localPoint(w, b)));
-        TRACKMOUSEEVENT tracking{sizeof(tracking), TME_NONCLIENT | TME_LEAVE, w, 0};
+    if (message == WM_NCMOUSEMOVE) {
+        frame->hover(buttonAt(layout(window), localPoint(window, lParam)));
+        TRACKMOUSEEVENT tracking{sizeof(tracking), TME_NONCLIENT | TME_LEAVE, window, 0};
         TrackMouseEvent(&tracking);
-        if (f->hot != Button::none)
+        if (frame->hot != Button::none)
             return 0;
     }
-    if (m == WM_NCMOUSELEAVE && f->pressed == Button::none)
-        f->hover(Button::none);
-    if (m == WM_NCLBUTTONDOWN || m == WM_NCLBUTTONDBLCLK) {
-        const auto button = buttonAt(layout(w), localPoint(w, b));
+    if (message == WM_NCMOUSELEAVE && frame->pressed == Button::none)
+        frame->hover(Button::none);
+    if (message == WM_NCLBUTTONDOWN || message == WM_NCLBUTTONDBLCLK) {
+        const auto button = buttonAt(layout(window), localPoint(window, lParam));
         if (button != Button::none) {
-            f->hideTip();
-            f->pressed = button;
-            f->hot = button;
-            SetCapture(w);
-            f->paint();
+            frame->hideTip();
+            frame->pressed = button;
+            frame->hot = button;
+            SetCapture(window);
+            frame->paint();
             return 0;
         }
     }
-    if (m == WM_MOUSEMOVE && f->pressed != Button::none) {
-        f->hover(buttonAt(layout(w), localPoint(w, b, true)));
+    if (message == WM_MOUSEMOVE && frame->pressed != Button::none) {
+        frame->hover(buttonAt(layout(window), localPoint(window, lParam, true)));
         return 0; // Captured title-bar drags never reach the game's mouse transform.
     }
-    if (m == WM_LBUTTONUP && f->pressed != Button::none) {
-        const auto button = f->pressed;
-        const bool activate = buttonAt(layout(w), localPoint(w, b, true)) == button;
-        f->cancel();
-        if (!f->destroyed && activate)
-            f->activate(button);
+    if (message == WM_LBUTTONUP && frame->pressed != Button::none) {
+        const auto button = frame->pressed;
+        const bool activate = buttonAt(layout(window), localPoint(window, lParam, true)) == button;
+        frame->cancel();
+        if (!frame->destroyed && activate)
+            frame->activate(button);
         return 0;
     }
-    if (m == WM_CANCELMODE || m == WM_CAPTURECHANGED ||
-        (m == WM_ACTIVATE && LOWORD(a) == WA_INACTIVE) || (m == WM_ACTIVATEAPP && !a))
-        f->cancel();
+    if (message == WM_CANCELMODE || message == WM_CAPTURECHANGED ||
+        (message == WM_ACTIVATE && LOWORD(wParam) == WA_INACTIVE) ||
+        (message == WM_ACTIVATEAPP && !wParam))
+        frame->cancel();
 #ifdef DAW_X
-    if (m == WM_SYSCOMMAND && ((a & 0xfff0) == nativeCommand || (a & 0xfff0) == newCommand)) {
-        f->activate((a & 0xfff0) == nativeCommand ? Button::native : Button::newClient);
+    if (message == WM_SYSCOMMAND &&
+        ((wParam & 0xfff0) == nativeCommand || (wParam & 0xfff0) == newCommand)) {
+        frame->activate((wParam & 0xfff0) == nativeCommand ? Button::native : Button::newClient);
         return 0;
     }
 #endif
-    if (m == WM_TIMER && a == f->hoverTimer && f->hoverTimer) {
-        f->showTip();
+    if (message == WM_TIMER && wParam == frame->hoverTimer && frame->hoverTimer) {
+        frame->showTip();
         return 0;
     }
-    if (m == WM_TIMER && a == f->titleTimer && f->titleTimer) {
+    if (message == WM_TIMER && wParam == frame->titleTimer && frame->titleTimer) {
         // External SetWindowText can update USER32's stored title without
         // delivering WM_SETTEXT to this process. Read only window text here.
         bool changed = false;
-        if (f->refreshTitle(&changed) && changed)
-            f->paint();
+        if (frame->refreshTitle(&changed) && changed)
+            frame->paint();
         return 0;
     }
 #ifdef DAW_X
-    if (m == WM_TIMER && a == f->launchTimer && f->launchTimer) {
-        f->updateLaunch();
+    if (message == WM_TIMER && wParam == frame->launchTimer && frame->launchTimer) {
+        frame->updateLaunch();
         return 0;
     }
 #endif
-    const auto result = DefSubclassProc(w, m, a, b);
-    if (!f->destroyed) {
-        if (m == WM_SETTEXT && !f->refreshTitle())
+    const auto result = DefSubclassProc(window, message, wParam, lParam);
+    if (!frame->destroyed) {
+        if (message == WM_SETTEXT && !frame->refreshTitle())
             return result;
-        if (m == WM_DPICHANGED || m == WM_THEMECHANGED || m == WM_SETTINGCHANGE ||
-            m == WM_DWMCOMPOSITIONCHANGED)
-            f->refreshStyle();
-        if (m == WM_PRINT && (b & PRF_NONCLIENT))
-            f->paint(reinterpret_cast<HDC>(a));
-        else if (m == WM_SETTEXT || m == WM_WINDOWPOSCHANGED || m == WM_ACTIVATE ||
-                 m == WM_DPICHANGED || m == WM_THEMECHANGED || m == WM_SETTINGCHANGE ||
-                 m == WM_SETICON || m == WM_DWMCOMPOSITIONCHANGED)
-            f->paint();
+        if (message == WM_DPICHANGED || message == WM_THEMECHANGED || message == WM_SETTINGCHANGE ||
+            message == WM_DWMCOMPOSITIONCHANGED)
+            frame->refreshStyle();
+        if (message == WM_PRINT && (lParam & PRF_NONCLIENT))
+            frame->paint(reinterpret_cast<HDC>(wParam));
+        else if (message == WM_SETTEXT || message == WM_WINDOWPOSCHANGED ||
+                 message == WM_ACTIVATE || message == WM_DPICHANGED || message == WM_THEMECHANGED ||
+                 message == WM_SETTINGCHANGE || message == WM_SETICON ||
+                 message == WM_DWMCOMPOSITIONCHANGED)
+            frame->paint();
     }
     return result;
 }

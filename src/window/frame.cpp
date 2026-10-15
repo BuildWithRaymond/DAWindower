@@ -1,6 +1,5 @@
 #include "frame.h"
 #include <dwmapi.h>
-#include <algorithm>
 
 namespace daw {
 bool windowedFrame(HWND window) {
@@ -28,31 +27,4 @@ void removeVisibleFrame(HWND window) {
     DwmSetWindowAttribute(window, static_cast<DWMWINDOWATTRIBUTE>(34), &noBorder, sizeof(noBorder));
 }
 
-int resizeHit(HWND window, POINT screen) {
-    RECT r{};
-    if (!GetWindowRect(window, &r) || !PtInRect(&r, screen))
-        return HTNOWHERE;
-    if (!windowedFrame(window) || IsZoomed(window))
-        return HTCLIENT;
-    const auto grip = std::max(4, MulDiv(6, GetDpiForWindow(window), 96));
-    const bool left = screen.x < r.left + grip, right = screen.x >= r.right - grip;
-    const bool top = screen.y < r.top + grip, bottom = screen.y >= r.bottom - grip;
-    if (top && left)
-        return HTTOPLEFT;
-    if (top && right)
-        return HTTOPRIGHT;
-    if (bottom && left)
-        return HTBOTTOMLEFT;
-    if (bottom && right)
-        return HTBOTTOMRIGHT;
-    if (left)
-        return HTLEFT;
-    if (right)
-        return HTRIGHT;
-    if (top)
-        return HTTOP;
-    if (bottom)
-        return HTBOTTOM;
-    return HTCLIENT;
-}
 } // namespace daw

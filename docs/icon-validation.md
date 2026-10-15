@@ -3,6 +3,10 @@
 October 14, 2026; version 0.2.3 candidate. This does not replace the immutable
 published 0.2.2 preview. Each edition remains a separate, single native x86 DLL.
 
+Historical caption-spacing record. Standard later adopted the shared gradient
+caption described in the [current architecture](architecture.md); native-caption
+spacing observations below apply to the recorded builds.
+
 ## Changes and regression evidence
 
 The inspected dawnd binary's RegisterClassA adapter calls

@@ -1,5 +1,4 @@
 #include "geometry.h"
-#include <algorithm>
 
 namespace daw {
 Viewport viewport(int width, int height) noexcept {

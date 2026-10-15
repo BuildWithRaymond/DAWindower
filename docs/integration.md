@@ -54,16 +54,15 @@ An injector must not race running startup or reuse the DLL as a late renderer sw
 
 ## Borderless windows and launcher fullscreen
 
-Current source preserves standard's native Windows title bar and X's custom
-caption. Standard retains the invisible native frame margins required for
-Windows' icon/title layout. X removes side/bottom frame insets. Both keep resize
-grips and native 4:3 windowed sizing; the
-normal Windows system menu remains available with Alt+Space.
+Both editions use the shared gradient caption and reserve no side or bottom
+frame margins. Standard has three ordinary window controls; X adds New client
+and native-size reset. Both keep invisible resize grips and native 4:3 windowed
+sizing. The normal Windows system menu remains available with Alt+Space.
 
 For launcher-controlled borderless fullscreen, a bare `WS_POPUP` without
 `WS_THICKFRAME` selects external geometry ownership. A maximized or monitor-sized
 bare popup already present at attachment is preserved. Applying the bare style
-after attachment also suspends windowed aspect constraints and X's caption.
+after attachment also suspends windowed aspect constraints and the shared caption.
 Native maximize then uses monitor bounds; an explicit monitor rectangle is
 respected. The renderer fills that rectangle and maps mouse coordinates with it.
 This desktop-window mode does not expose exclusive DirectDraw fullscreen.
@@ -90,8 +89,8 @@ matching dawnd's `ExtractIconA(..., 0)` selection. Restoration happens during
 normal window attachment, outside loader lock. Existing per-window and class
 icons are preserved; later launcher `WM_SETICON` changes retain native behavior.
 
-Standard uses the Windows caption. X draws the same icon in its custom caption;
-the icon opens the native system menu. Both expose small and large window icons
+Both editions draw the icon in their shared caption; the icon opens the native
+system menu. Both expose small and large window icons
 for Windows and launchers. No icon is embedded in or distributed alongside the
 DLL: the existing game executable supplies its artwork. A missing resource is
 nonfatal.

@@ -109,14 +109,14 @@ HANDLE WINAPI firstMutex(LPSECURITY_ATTRIBUTES attributes, BOOL owner, LPCSTR na
 } // namespace
 
 BOOL armBootstrap(HMODULE image) noexcept {
-    gates[0] = {slotFor(image, "ddraw.dll", "DirectDrawCreate"),
-                nullptr,
-                reinterpret_cast<void*>(firstDraw)};
-    if (!gates[0].slot)
+    gates[directDrawBootstrapGate] = {slotFor(image, "ddraw.dll", "DirectDrawCreate"),
+                                      nullptr,
+                                      reinterpret_cast<void*>(firstDraw)};
+    if (!gates[directDrawBootstrapGate].slot)
         return TRUE; // Non-client tools can still use explicit API.
-    gates[1] = {slotFor(image, "kernel32.dll", "CreateMutexA"),
-                nullptr,
-                reinterpret_cast<void*>(firstMutex)};
+    gates[mutexBootstrapGate] = {slotFor(image, "kernel32.dll", "CreateMutexA"),
+                                 nullptr,
+                                 reinterpret_cast<void*>(firstMutex)};
     for (auto& gate : gates) {
         if (!gate.slot)
             continue;

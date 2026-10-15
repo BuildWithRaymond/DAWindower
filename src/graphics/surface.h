@@ -47,10 +47,10 @@ class Surface final : public IDirectDrawSurface {
     unsigned restoreFailures_ = 0;
     HRESULT initialStatus_ = DD_OK;
     IDirectDrawClipper* offscreenClipper_ = nullptr;
-    HRESULT remember(RECT*);
-    void rememberLocked(const DDSURFACEDESC&, const RECT&);
-    HRESULT repopulate(IDirectDrawSurface*);
-    HRESULT reapply(IDirectDrawSurface*);
+    HRESULT remember(RECT* changed);
+    void rememberLocked(const DDSURFACEDESC& memory, const RECT& area);
+    HRESULT repopulate(IDirectDrawSurface* target);
+    HRESULT reapply(IDirectDrawSurface* target);
     void markLost();
     HRESULT repairLost(Surface* source = nullptr);
     HRESULT available();
@@ -63,7 +63,7 @@ class Surface final : public IDirectDrawSurface {
     }
 
   public:
-    Surface(Draw*, IDirectDrawSurface*, DWORD);
+    Surface(Draw* owner, IDirectDrawSurface* native, DWORD caps);
     ~Surface();
 
     IDirectDrawSurface* native() const {
@@ -92,42 +92,60 @@ class Surface final : public IDirectDrawSurface {
         back_ = back;
     }
 
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID, void**) override;
+    // COM declarations follow the DirectDrawSurface v1 interface order.
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID id, void** output) override;
     ULONG STDMETHODCALLTYPE AddRef() override;
     ULONG STDMETHODCALLTYPE Release() override;
-    HRESULT STDMETHODCALLTYPE AddAttachedSurface(IDirectDrawSurface*) override;
-    HRESULT STDMETHODCALLTYPE AddOverlayDirtyRect(RECT*) override;
-    HRESULT STDMETHODCALLTYPE Blt(RECT*, IDirectDrawSurface*, RECT*, DWORD, DDBLTFX*) override;
-    HRESULT STDMETHODCALLTYPE BltBatch(DDBLTBATCH*, DWORD, DWORD) override;
-    HRESULT STDMETHODCALLTYPE BltFast(DWORD, DWORD, IDirectDrawSurface*, RECT*, DWORD) override;
-    HRESULT STDMETHODCALLTYPE DeleteAttachedSurface(DWORD, IDirectDrawSurface*) override;
-    HRESULT STDMETHODCALLTYPE EnumAttachedSurfaces(void*, LPDDENUMSURFACESCALLBACK) override;
-    HRESULT STDMETHODCALLTYPE EnumOverlayZOrders(DWORD, void*, LPDDENUMSURFACESCALLBACK) override;
-    HRESULT STDMETHODCALLTYPE Flip(IDirectDrawSurface*, DWORD) override;
-    HRESULT STDMETHODCALLTYPE GetAttachedSurface(DDSCAPS*, IDirectDrawSurface**) override;
-    HRESULT STDMETHODCALLTYPE GetBltStatus(DWORD) override;
-    HRESULT STDMETHODCALLTYPE GetCaps(DDSCAPS*) override;
-    HRESULT STDMETHODCALLTYPE GetClipper(IDirectDrawClipper**) override;
-    HRESULT STDMETHODCALLTYPE GetColorKey(DWORD, DDCOLORKEY*) override;
-    HRESULT STDMETHODCALLTYPE GetDC(HDC*) override;
-    HRESULT STDMETHODCALLTYPE GetFlipStatus(DWORD) override;
-    HRESULT STDMETHODCALLTYPE GetOverlayPosition(LONG*, LONG*) override;
-    HRESULT STDMETHODCALLTYPE GetPalette(IDirectDrawPalette**) override;
-    HRESULT STDMETHODCALLTYPE GetPixelFormat(DDPIXELFORMAT*) override;
-    HRESULT STDMETHODCALLTYPE GetSurfaceDesc(DDSURFACEDESC*) override;
-    HRESULT STDMETHODCALLTYPE Initialize(IDirectDraw*, DDSURFACEDESC*) override;
-    HRESULT STDMETHODCALLTYPE IsLost() override;
-    HRESULT STDMETHODCALLTYPE Lock(RECT*, DDSURFACEDESC*, DWORD, HANDLE) override;
-    HRESULT STDMETHODCALLTYPE ReleaseDC(HDC) override;
-    HRESULT STDMETHODCALLTYPE Restore() override;
-    HRESULT STDMETHODCALLTYPE SetClipper(IDirectDrawClipper*) override;
-    HRESULT STDMETHODCALLTYPE SetColorKey(DWORD, DDCOLORKEY*) override;
-    HRESULT STDMETHODCALLTYPE SetOverlayPosition(LONG, LONG) override;
-    HRESULT STDMETHODCALLTYPE SetPalette(IDirectDrawPalette*) override;
-    HRESULT STDMETHODCALLTYPE Unlock(void*) override;
+    HRESULT STDMETHODCALLTYPE AddAttachedSurface(IDirectDrawSurface* attachment) override;
+    HRESULT STDMETHODCALLTYPE AddOverlayDirtyRect(RECT* dirty) override;
+    HRESULT STDMETHODCALLTYPE Blt(RECT* destination,
+                                  IDirectDrawSurface* source,
+                                  RECT* sourceRect,
+                                  DWORD flags,
+                                  DDBLTFX* effects) override;
+    HRESULT STDMETHODCALLTYPE BltBatch(DDBLTBATCH* batch, DWORD count, DWORD flags) override;
     HRESULT STDMETHODCALLTYPE
-    UpdateOverlay(RECT*, IDirectDrawSurface*, RECT*, DWORD, DDOVERLAYFX*) override;
-    HRESULT STDMETHODCALLTYPE UpdateOverlayDisplay(DWORD) override;
-    HRESULT STDMETHODCALLTYPE UpdateOverlayZOrder(DWORD, IDirectDrawSurface*) override;
+    BltFast(DWORD x, DWORD y, IDirectDrawSurface* source, RECT* rect, DWORD flags) override;
+    HRESULT STDMETHODCALLTYPE DeleteAttachedSurface(DWORD flags,
+                                                    IDirectDrawSurface* attachment) override;
+    HRESULT STDMETHODCALLTYPE EnumAttachedSurfaces(void* context,
+                                                   LPDDENUMSURFACESCALLBACK callback) override;
+    HRESULT STDMETHODCALLTYPE EnumOverlayZOrders(DWORD flags,
+                                                 void* context,
+                                                 LPDDENUMSURFACESCALLBACK callback) override;
+    HRESULT STDMETHODCALLTYPE Flip(IDirectDrawSurface* target, DWORD flags) override;
+    HRESULT STDMETHODCALLTYPE GetAttachedSurface(DDSCAPS* caps,
+                                                 IDirectDrawSurface** output) override;
+    HRESULT STDMETHODCALLTYPE GetBltStatus(DWORD flags) override;
+    HRESULT STDMETHODCALLTYPE GetCaps(DDSCAPS* output) override;
+    HRESULT STDMETHODCALLTYPE GetClipper(IDirectDrawClipper** output) override;
+    HRESULT STDMETHODCALLTYPE GetColorKey(DWORD flags, DDCOLORKEY* output) override;
+    HRESULT STDMETHODCALLTYPE GetDC(HDC* output) override;
+    HRESULT STDMETHODCALLTYPE GetFlipStatus(DWORD flags) override;
+    HRESULT STDMETHODCALLTYPE GetOverlayPosition(LONG* x, LONG* y) override;
+    HRESULT STDMETHODCALLTYPE GetPalette(IDirectDrawPalette** output) override;
+    HRESULT STDMETHODCALLTYPE GetPixelFormat(DDPIXELFORMAT* output) override;
+    HRESULT STDMETHODCALLTYPE GetSurfaceDesc(DDSURFACEDESC* output) override;
+    HRESULT STDMETHODCALLTYPE Initialize(IDirectDraw* draw, DDSURFACEDESC* description) override;
+    HRESULT STDMETHODCALLTYPE IsLost() override;
+    HRESULT STDMETHODCALLTYPE Lock(RECT* rect,
+                                   DDSURFACEDESC* output,
+                                   DWORD flags,
+                                   HANDLE event) override;
+    HRESULT STDMETHODCALLTYPE ReleaseDC(HDC dc) override;
+    HRESULT STDMETHODCALLTYPE Restore() override;
+    HRESULT STDMETHODCALLTYPE SetClipper(IDirectDrawClipper* clipper) override;
+    HRESULT STDMETHODCALLTYPE SetColorKey(DWORD flags, DDCOLORKEY* key) override;
+    HRESULT STDMETHODCALLTYPE SetOverlayPosition(LONG x, LONG y) override;
+    HRESULT STDMETHODCALLTYPE SetPalette(IDirectDrawPalette* palette) override;
+    HRESULT STDMETHODCALLTYPE Unlock(void* address) override;
+    HRESULT STDMETHODCALLTYPE UpdateOverlay(RECT* sourceRect,
+                                            IDirectDrawSurface* destination,
+                                            RECT* destinationRect,
+                                            DWORD flags,
+                                            DDOVERLAYFX* effects) override;
+    HRESULT STDMETHODCALLTYPE UpdateOverlayDisplay(DWORD flags) override;
+    HRESULT STDMETHODCALLTYPE UpdateOverlayZOrder(DWORD flags,
+                                                  IDirectDrawSurface* reference) override;
 };
 } // namespace daw

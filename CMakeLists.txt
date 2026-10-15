@@ -33,18 +33,20 @@ add_compile_definitions(DAW_TEST_DLL_A="${DAW_DLL_NAME}.dll" DAW_TEST_DLL_W=L"${
 # Geometry is shared by the DLL and tests; it has no desktop dependency.
 add_library(daw_geometry STATIC src/window/geometry.cpp src/window/aspect.cpp)
 target_include_directories(daw_geometry PUBLIC include)
-set(DAW_GRAPHICS
-  src/graphics/draw.cpp
-  src/graphics/surface.cpp
-  src/graphics/gdi.cpp
+set(DAW_WINDOW_SOURCES
   src/window/window.cpp
   src/window/icon.cpp
   src/window/frame.cpp
   src/window/caption.cpp
   src/window/sizing.cpp)
+set(DAW_RENDERING_SOURCES
+  src/graphics/draw.cpp
+  src/graphics/surface.cpp
+  src/graphics/gdi.cpp
+  ${DAW_WINDOW_SOURCES})
 if(DAW_BUILD_X)
   set(DAW_X_SOURCES src/x/launch.cpp)
-  list(APPEND DAW_GRAPHICS ${DAW_X_SOURCES})
+  list(APPEND DAW_RENDERING_SOURCES ${DAW_X_SOURCES})
 endif()
 set(DAW_SOURCES
   src/main.cpp
@@ -53,7 +55,7 @@ set(DAW_SOURCES
   src/compatibility/mutex.cpp
   src/compatibility/geometry.cpp
   src/cursor/diagnostics.cpp
-  ${DAW_GRAPHICS})
+  ${DAW_RENDERING_SOURCES})
 
 # The only runtime distribution target.
 add_library(DAWindower SHARED ${DAW_SOURCES} ${DAW_EXPORTS})
@@ -72,18 +74,14 @@ if(BUILD_TESTING)
   add_test(NAME aspect_geometry COMMAND aspect_tests)
   set_tests_properties(aspect_geometry PROPERTIES LABELS "unit")
 
-  add_executable(recovery_tests tests/recovery_tests.cpp ${DAW_GRAPHICS})
+  add_executable(recovery_tests tests/recovery_tests.cpp ${DAW_RENDERING_SOURCES})
   target_include_directories(recovery_tests PRIVATE include src)
   target_link_libraries(recovery_tests PRIVATE daw_geometry ddraw ${DAW_SYSTEM_LIBRARIES})
   add_test(NAME surface_recovery_contract COMMAND recovery_tests)
 
   add_executable(presentation_recovery_tests
     tests/presentation_recovery_tests.cpp
-    src/window/window.cpp
-    src/window/icon.cpp
-    src/window/frame.cpp
-    src/window/caption.cpp
-    src/window/sizing.cpp
+    ${DAW_WINDOW_SOURCES}
     src/graphics/gdi.cpp
     src/compatibility/imports.cpp)
   target_include_directories(presentation_recovery_tests PRIVATE include src)

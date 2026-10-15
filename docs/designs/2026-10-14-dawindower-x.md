@@ -1,8 +1,9 @@
 # DAWindower X
 
-Historical design. Current title behavior is defined in
-[window title ownership](2026-10-15-window-title-ownership.md); neither edition retains
-the character-memory reader described below.
+Historical design. Standard now shares X's caption renderer and caption-only
+frame layout; see the [current architecture](../architecture.md). Current title
+behavior is defined in [window title ownership](2026-10-15-window-title-ownership.md);
+neither edition retains the character-memory reader described below.
 
 Approved layout, October 14, 2026:
 
