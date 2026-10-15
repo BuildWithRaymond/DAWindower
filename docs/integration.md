@@ -79,8 +79,8 @@ A bare popup that has not yet been maximized or assigned monitor bounds before
 attachment is indistinguishable from the game's original window. That partially
 completed pre-attach transition is not a universal intent signal. Launchers can
 apply their completed fullscreen style/bounds after the resizable window appears.
-Actual AoSda acceptance must be recorded separately; these tests do not certify
-every launcher or injection pattern.
+Acceptance of each launcher's workflow must be recorded separately; these
+tests do not certify every launcher or injection pattern.
 
 ## Optional exports
 

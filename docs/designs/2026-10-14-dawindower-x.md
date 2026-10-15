@@ -106,6 +106,6 @@ dragging and launcher operations need not pass through the client's IAT.
 
 Test both launcher-before-attach and launcher-after-attach ordering, plus late
 client resets, unrelated windows, fullscreen client insets and keyboard/window
-lifetime behavior. An actual AoSda launch is still required before claiming
-AoSda-specific runtime acceptance. No release or broad compatibility claim
+lifetime behavior. Record actual launcher runs separately before claiming
+launcher-specific runtime acceptance. No release or broad compatibility claim
 precedes actual-client acceptance.

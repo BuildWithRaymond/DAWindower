@@ -207,7 +207,7 @@ those observations remain scoped to their recorded builds.
 
 Current boundaries:
 
-- Actual AoSda launch ordering and the complete UAC, lock/unlock, refresh-rate
+- Full launcher workflows and the complete UAC, lock/unlock, refresh-rate
   and monitor-change matrix have not been rerun on this candidate. Native
   launcher-style fixtures do not certify a specific launcher's full workflow.
 - The verified graphics client uses v1 `IDirectDraw`/`IDirectDrawSurface` and

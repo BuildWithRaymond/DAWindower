@@ -137,9 +137,9 @@ that observation as acceptance of the changed candidate.
 Actual-client LoadLibrary-only startup and native launcher-style fullscreen
 geometry checks passed. Manual title-bar and resize feel checks passed. All five
 tooltip descriptions were confirmed on the corrected X candidate.
-AoSda's exact launch sequence has not been run by
-the automated fixtures. A partially completed pre-attach popup transition with
-neither maximized state nor monitor bounds is ambiguous; see the
+Full launcher workflows have not been exercised by the automated fixtures.
+A partially completed pre-attach popup transition with neither maximized state
+nor monitor bounds is ambiguous; see the
 [launcher contract and limits](integration.md#borderless-windows-and-launcher-fullscreen).
 
 UAC accept/cancel, lock/unlock, refresh/topology changes, logout-name timing and

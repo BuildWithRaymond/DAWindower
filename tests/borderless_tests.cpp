@@ -36,8 +36,8 @@ void flushClient(HWND w, int caption = 0) {
 }
 
 void launcherFullscreen(HWND w, const RECT& monitor, bool attached = false) {
-    // AoSda's reported contract: replace the style, then maximize. Also exercise
-    // an explicit monitor rectangle, as other borderless launchers use it.
+    // Exercise a launcher fullscreen transition: replace the style, then maximize.
+    // Also exercise explicit monitor bounds for borderless fullscreen.
     SetWindowLongW(w, GWL_STYLE, WS_POPUP);
     const auto show = reinterpret_cast<decltype(&ShowWindow)>(
         GetProcAddress(GetModuleHandleW(L"user32.dll"), "ShowWindow"));

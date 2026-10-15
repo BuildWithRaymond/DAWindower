@@ -76,8 +76,8 @@ module result, resumes startup and verifies native resizing. It calls no
 initialization export. It also checks every intermediate pixel dimension in a
 short width/height sequence, then exercises native popup/fullscreen maximize,
 minimize/restore and exact return to windowed dimensions. It records graphics
-module paths. This emulates the reported launcher operations; it is not an
-execution of AoSda itself.
+module paths. This emulates native launcher operations; it does not run a
+complete launcher workflow.
 
 For review without any helper resizing or fullscreen transitions, substitute
 `--launch-native`. This checks that the actual game starts at exactly 640×480
