@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Windows with Visual Studio 2022 or Build Tools, the Desktop development with
+- Windows 10/11 with Visual Studio 2022 or Build Tools, the Desktop development with
   C++ workload, MSVC x86/x64 tools and a Windows SDK.
 - CMake 3.24+ on `PATH`; Visual Studio can install it with the C++ tools.
 - An interactive Windows desktop for the full native test suite.
@@ -31,7 +31,7 @@ directory at once. A normal configure does not launch the game or touch existing
 For a focused regression:
 
 ```powershell
-ctest --preset release -R 'resize_cursor_contract|smooth_resize_contract'
+ctest --preset release -R 'resize_cursor_contract|native_aspect_resize_contract'
 ```
 
 For unit checks without an interactive desktop:
@@ -41,8 +41,11 @@ ctest --preset unit-release
 ctest --preset unit-debug
 ```
 
-These currently select only geometry. They do not establish that the renderer or
+These select viewport/aspect geometry and the bounded X name-reader/build-guard checks. They do not establish that the renderer or
 recovery works; use the full interactive suite and actual-client checks for that.
+
+The optional X edition has separate `windows-x86-x`, `x-release` and `x-debug`
+presets and its own build/install directories. See [DAWindower X](x-edition.md).
 
 ## Format and documentation checks
 

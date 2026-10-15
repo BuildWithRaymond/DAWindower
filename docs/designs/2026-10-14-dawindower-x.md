@@ -3,18 +3,19 @@
 Approved layout, October 14, 2026:
 
 ```text
-DAWindower X · CharacterName       [+] [1:1]   [−] [□] [×]
+Dark Ages · CharacterName          [+] [1:1]   [−] [□] [×]
 ```
 
 X is an optional edition built from the same rendering and recovery sources as
 standard DAWindower. Its runtime package contains only `DAWindowerX.dll`.
-Standard builds retain their existing window frame and package name. Neither
+Standard builds retain their native Windows title bar and package name. Neither
 edition needs a launcher-specific initializer, a proxy DLL or configuration.
 
 ## Window controls
 
-Draw a flat, near-black non-client frame with light text, compact vector icons,
-subtle hover states and a red close hover. Keep the game client rectangle separate
+Draw a charcoal-to-black gradient caption with semibold light text, compact vector icons,
+rounded hover states, a red close hover and descriptive dark tooltips. There is
+no visible side/bottom border. Keep the game client rectangle separate
 from the title bar so rendering, software-cursor composition and mouse transforms
 continue to use the existing geometry. Retain Windows resizing, moving, system
 menu, minimize, maximize, restore and close commands.
@@ -22,7 +23,7 @@ menu, minimize, maximize, restore and close commands.
 The two extra actions also appear in the Windows system menu for keyboard access.
 Hover text describes the compact buttons. A press activates only when released
 over the same button; cancellation, deactivation and capture loss cancel it.
-Windows high-contrast mode uses system colors. Changes in DPI/theme/activation
+The caption follows Windows high-contrast system colors. Changes in DPI/theme/activation
 refresh the frame without changing process-wide DPI awareness.
 
 The native-size action restores a maximized/minimized window before setting its
@@ -37,7 +38,7 @@ Echo's client profiles. Verify executable identity before reading that address;
 do not guess offsets for unknown clients. Validate length, termination and name
 characters. Poll at most once per second, outside loader lock, and update window
 text only when changed. Unknown builds or unavailable names retain the title
-`Dark Ages — DAWindower X`. No networking, packet interception, credentials,
+`Dark Ages`. No networking, packet interception, credentials,
 automatic login or game-memory writes are part of this feature.
 
 Name sampling and login/logout behavior require actual-client acceptance. Static
@@ -73,4 +74,38 @@ Report launch failures visibly with their Windows error and stage.
    appearance, login-name timing, resizing, extra-client launch and recovery.
    Record precisely what was observed; synthetic tests do not certify gameplay.
 
-No release or broad compatibility claim precedes actual-client acceptance.
+## Shared borderless sizing and launcher ownership
+
+Subsequent user requests apply to both editions: preserve native 4:3 windowed
+aspect while accepting every nearest-pixel width/height, without the old 4×3
+size grid. Both retain title bars: native Windows in standard, custom in X.
+Neither reserves side/bottom frame insets. Corner motion follows a continuous
+closest-size projection onto 4:3; it never switches between competing axis
+drivers based on a size that the previous callback already changed.
+Invisible edge hit regions retain native resizing and visible resize arrows.
+Windowed maximize fits a 4:3 client inside the monitor work area. Standard keeps
+the Windows system menu for Alt+Space move/size/minimize/close; no game input
+gesture is repurposed for moving.
+
+A launcher's explicit bare `WS_POPUP` fullscreen request owns its window style
+and monitor bounds. Recognize a maximized or monitor-sized bare popup already
+present at attachment; never restore or resize it. After attachment, removing
+the resize capability selects external fullscreen, suspending 4:3 constraints
+and X's caption. This mode fills the monitor, so non-4:3 monitors use independent
+axis scaling. Windowed mode remains 4:3. No polling worker fights window styles.
+
+Install scoped EXE-import adapters outside loader lock alongside BitBlt. For
+tracked attached windows, client MoveWindow calls cannot reset geometry and
+client SetWindowLongA style/extended-style writes preserve the selected style.
+Other indices, especially the inspected client's GWL_USERDATA writes, pass
+through. ShowWindow keeps hide/minimize/restore-from-minimize and ordinary show
+behavior, while normal/maximize commands cannot undo an existing selected mode.
+Untracked windows and direct USER32 calls from launchers/Windows/X retain native
+semantics. Aspect enforcement stays in the shared HWND sizing path because user
+dragging and launcher operations need not pass through the client's IAT.
+
+Test both launcher-before-attach and launcher-after-attach ordering, plus late
+client resets, unrelated windows, fullscreen client insets and keyboard/window
+lifetime behavior. An actual AoSda launch is still required before claiming
+AoSda-specific runtime acceptance. No release or broad compatibility claim
+precedes actual-client acceptance.

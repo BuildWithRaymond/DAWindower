@@ -18,6 +18,10 @@ graphics, cursor and mouse behavior.
 [Contribute](CONTRIBUTING.md) · [Code tour](docs/architecture.md) ·
 [Test evidence](docs/smooth-resize-validation.md)
 
+Source development includes borderless standard windows, native 4:3 sizing and
+the optional X edition. The linked 0.2.2 preview predates these changes; see the
+[current validation record](docs/x-borderless-validation.md) for candidate status.
+
 ## With love for dawnd
 
 For more than twenty years, dawnd has been part of how this community plays
@@ -44,10 +48,19 @@ dawnd.dll**, and to everyone who kept it in players' hands.
 
 dawnd already supplies windowed play, multiple clients, cursor handling,
 full-window graphics and native resize arrows. DAWindower preserves those
-expectations. Its logical frame stays 640×480 RGB565 with nearest-neighbor
-presentation and matching mouse mapping. Width and height can change independently;
-non-4:3 sizes stretch proportions. Networking, gameplay and automation paths are
-not hooked.
+expectations, including the native 4:3 aspect ratio. Its logical frame stays
+640×480 RGB565 with nearest-neighbor presentation and matching mouse mapping.
+Dragging couples width and height with nearest-pixel rounding; maximizing fits
+the largest 4:3 client within the monitor work area. Both editions keep title
+bars: native Windows in standard, custom Dark Ages in X. Game pixels reach both
+sides and the bottom; invisible edges retain resizing. Alt+Space opens Windows
+move, size, minimize and close commands. Corners follow the closest 4:3 size
+continuously, without switching axes or jumping between preset dimensions.
+
+A launcher's explicit borderless fullscreen request keeps its monitor bounds
+and hides X's caption too. Fullscreen uses the whole client rectangle, including
+non-4:3 monitors; the 4:3 sizing rule applies to ordinary windowed mode.
+Networking, gameplay and automation paths are not hooked.
 
 ## What changes from dawnd
 
@@ -60,7 +73,7 @@ DAWindower's implementation differs from the inspected legacy binary.
 | Desktop presentation | Its converted-primary path draws into a separate real DirectDraw primary. | A retained RGB565 canvas presents through GDI into each window. |
 | Failed presentation | That private-primary path discards the presentation result; no repair path was found for the private surface. | Failed presentations retain the frame and retry with bounded backoff, even without new game writes. |
 | Lost surface content | No wrapper-owned pixel backup/repopulation was found in that path. | Completed pixel writes are retained; recovery reapplies color keys and keeps public COM identities stable. |
-| Resizing | Full-window presentation, with 4:3 constraints in the inspected sizing handler. | Full-window presentation with independent, arbitrary client dimensions. |
+| Resizing | Full-window presentation with 4:3 constraints. | Full-window presentation with 4:3 constraints and smooth nearest-pixel sizing. |
 | Initialization | Import hooks are installed during process attach. | Only small import gates run at attach; full setup finishes synchronously at the first factory call outside loader lock. |
 | Contribution | Research examined a bundled binary; original source was not found in the references searched. | MIT source, documented ownership, reproducible builds, and regression tests are included. |
 
@@ -87,6 +100,12 @@ Use one compatibility DLL per client; consult the
 [integration guide](docs/integration.md) for the precise contract and optional exports.
 
 ## Build and test
+
+An optional **DAWindower X** edition adds a borderless charcoal-to-black gradient
+title bar displaying **Dark Ages · CharacterName**, native-size reset, New client
+button, and dark button tooltips. It shares this renderer and remains a
+single DLL. X is under development; see its [controls, client support and build
+instructions](docs/x-edition.md). Standard keeps its native title bar.
 
 Install Visual Studio 2022 or its Build Tools with **Desktop development with C++**,
 the Windows SDK, and CMake 3.24 or newer. Use a Developer PowerShell with CMake on

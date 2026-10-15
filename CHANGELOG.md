@@ -5,6 +5,17 @@ changes do not imply a newly tested retail release.
 
 ## Unreleased
 
+- Version 0.2.3 candidate: nearest-pixel native 4:3 sizing in both editions,
+  native-titlebar standard windows without side/bottom frame insets, and caption-only X.
+- Continuous corner projection removes reproduced backward size jumps while
+  retaining nearest-pixel sizing across native tracking limits.
+- X: Dark Ages/character title, charcoal-to-black gradient, button tooltips,
+  exact native-size reset and direct suspended/injected New client action.
+- Preserve completed launcher popup/fullscreen selection before or after attach;
+  suspend windowed constraints there. Guard scoped client geometry/style imports
+  while retaining native launcher calls, user data and minimize/hide behavior.
+- Candidate acceptance is tracked separately from the published 0.2.2 preview.
+
 - Clarify community-facing comparisons: cursor handling, full-window graphics
   and native resize arrows are existing dawnd behavior. Recovery and open-source
   maintenance are the adoption reasons emphasized by this project.

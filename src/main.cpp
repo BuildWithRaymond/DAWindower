@@ -2,6 +2,7 @@
 #include "compatibility/imports.h"
 #include "compatibility/bootstrap.h"
 #include "compatibility/mutex.h"
+#include "compatibility/geometry.h"
 #include "cursor/diagnostics.h"
 #include "graphics/gdi.h"
 #include "dawindower.h"
@@ -46,6 +47,10 @@ DWORD installCompatibilityImports() {
                                             patches);
     if (bltResult && bltResult != ERROR_PROC_NOT_FOUND)
         return bltResult;
+    const auto geometryResult =
+        daw::installClientGeometryImports(GetModuleHandleW(nullptr), patches);
+    if (geometryResult)
+        return geometryResult;
 #ifdef _DEBUG
     if (!diagnostics)
         return ERROR_SUCCESS;
@@ -199,7 +204,7 @@ extern "C" DWORD WINAPI DAWindowerInitialize(void* reserved) {
         return preparedResult;
     DWORD result = ERROR_SUCCESS;
     try {
-        patches.reserve(8);
+        patches.reserve(12);
         result = daw::validateBootstrap(reinterpret_cast<void*>(daw::realCreateDraw),
                                         reinterpret_cast<void*>(GetProcAddress(
                                             GetModuleHandleW(L"kernel32.dll"), "CreateMutexA")));
@@ -268,7 +273,7 @@ extern "C" HRESULT WINAPI DAWindowerProxyCreate(GUID* guid, IDirectDraw** output
     auto result = daw::prepareRuntime();
     if (!result && !initialized) {
         try {
-            patches.reserve(8);
+            patches.reserve(12);
             result = installCompatibilityImports();
         } catch (const std::bad_alloc&) {
             result = ERROR_NOT_ENOUGH_MEMORY;

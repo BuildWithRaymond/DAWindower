@@ -10,6 +10,7 @@ Start with the project [README](../README.md) and [contributor guide](../CONTRIB
 | [Architecture](architecture.md) | Following a frame, changing hooks or checking lock/reference ownership. |
 | [Testing](testing.md) | Choosing a regression, running actual-client checks or recording a manual transition. |
 | [Launcher integration](integration.md) | Replacing a dawnd resource/injection path or inspecting the optional export ABI. |
+| [DAWindower X](x-edition.md) | Building the optional title-bar edition, using its controls or adding a verified client-name profile. |
 | [Changelog](../CHANGELOG.md) | Checking what changed across runtime versions. |
 | [Credits](../CREDITS.md) | Understanding dawnd's legacy and the research references. |
 
@@ -20,6 +21,7 @@ is not a requirement for today's standalone DLL.
 
 | Record | Scope |
 | --- | --- |
+| [X and borderless candidate](x-borderless-validation.md) | Version 0.2.3 candidate; both editions, launcher fullscreen and scoped client geometry guards. |
 | [Free resize and visible frame cursors](smooth-resize-validation.md) | Versions 0.2.1–0.2.2; current resize/cursor and exact package evidence. |
 | [Standalone loading and recovery](standalone-validation.md) | Version 0.2.0; actual injection, multiclient tests and recovery limits. |
 | [Recovery design](standalone-recovery-design.md) | Rationale for import gates, retained pixels and per-window recovery. |

@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
     const bool unloadOnly = argc > 1 && std::strcmp(argv[1], "--dormant-unload") == 0;
     const bool test =
         loadOnly || proxy || diagnostic || (argc > 1 && std::strcmp(argv[1], "--self-test") == 0);
-    auto module = LoadLibraryA(proxy ? "ddraw.dll" : renamed ? "dawnd.dll" : "DAWindower.dll");
+    auto module = LoadLibraryA(proxy ? "ddraw.dll" : renamed ? "dawnd.dll" : DAW_TEST_DLL_A);
     require(module != nullptr, "load DAWindower prototype");
     auto init = reinterpret_cast<DAWindowerEntry>(GetProcAddress(module, "DAWindowerInitialize"));
     auto stop = reinterpret_cast<DAWindowerEntry>(GetProcAddress(module, "DAWindowerShutdown"));
@@ -161,8 +161,12 @@ int main(int argc, char** argv) {
         const auto count = ShowCursor(TRUE);
         require(ShowCursor(FALSE) == count - 1, "cursor counter changes exactly once per call");
         require(SetCursor(cursor) != nullptr, "cursor handle round trip");
-        RECT r{0, 0, 1280, 720};
-        AdjustWindowRect(&r, GetWindowLongW(window, GWL_STYLE), FALSE);
+        RECT r{0, 0, 960, 720};
+        RECT previousOuter{}, previousClient{};
+        GetWindowRect(window, &previousOuter);
+        GetClientRect(window, &previousClient);
+        r.right += previousOuter.right - previousOuter.left - previousClient.right;
+        r.bottom += previousOuter.bottom - previousOuter.top - previousClient.bottom;
         SetWindowPos(window,
                      nullptr,
                      0,
@@ -172,13 +176,13 @@ int main(int argc, char** argv) {
                      SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
         RECT client{};
         GetClientRect(window, &client);
-        require(client.right == 1280 && client.bottom == 720,
-                "arbitrary client size remains unchanged");
-        SendMessageW(window, WM_MOUSEMOVE, 0, MAKELPARAM(640, 360));
+        require(client.right == 960 && client.bottom == 720,
+                "native aspect client size remains unchanged");
+        SendMessageW(window, WM_MOUSEMOVE, 0, MAKELPARAM(480, 360));
         require(mouseX == 320 && mouseY == 240, "window input matches presentation scale");
         SendMessageW(window, WM_LBUTTONDOWN, 0, MAKELPARAM(-1, 360));
         require(presses == 0, "outside-image press suppressed");
-        SendMessageW(window, WM_LBUTTONDOWN, 0, MAKELPARAM(640, 360));
+        SendMessageW(window, WM_LBUTTONDOWN, 0, MAKELPARAM(480, 360));
         require(presses == 1, "game press delivered");
         auto screen = GetDC(window);
         auto dc = CreateCompatibleDC(screen);
@@ -212,7 +216,7 @@ int main(int argc, char** argv) {
                 "flip respects outstanding DC");
         hr(primary->ReleaseDC(surfaceDC), "ReleaseDC captures GDI update");
         SendMessageW(window, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(verifyMemory), PRF_CLIENT);
-        require(GetPixel(verifyMemory, 640, 360) == RGB(255, 255, 255),
+        require(GetPixel(verifyMemory, 480, 360) == RGB(255, 255, 255),
                 "RGB565 GDI update reaches window");
         hr(draw->SetCooperativeLevel(window, DDSCL_NORMAL), "normal cooperative mode");
         IDirectDrawClipper* clipper = nullptr;

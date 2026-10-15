@@ -1,12 +1,17 @@
 #include "window.h"
 #include "sizing.h"
+#include "frame.h"
 #include "runtime.h"
 #include "graphics/gdi.h"
 #include <commctrl.h>
 #include <windowsx.h>
+#include <algorithm>
 #include <cstring>
 #include <new>
 #include <wtsapi32.h>
+#ifdef DAW_X
+#include "x/frame.h"
+#endif
 
 namespace daw {
 namespace {
@@ -176,10 +181,39 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
             delete owner;
         return result;
     }
+    if (m == WM_NCCALCSIZE && b) {
+        auto r = a ? &reinterpret_cast<NCCALCSIZE_PARAMS*>(b)->rgrc[0] : reinterpret_cast<RECT*>(b);
+        const auto requested = *r;
+        auto retained = owner->state;
+        DefSubclassProc(w, m, a, b);
+        if (retained->hwnd.load() == w) {
+            *r = requested;
+#ifndef DAW_X
+            r->top = std::min(r->bottom, r->top + nativeCaptionHeight(w));
+#endif
+        }
+        return 0; // Caption only; game pixels reach both sides and bottom.
+    }
+#ifndef DAW_X
+    if (m == WM_NCHITTEST) {
+        const auto hit = resizeHit(w, {GET_X_LPARAM(b), GET_Y_LPARAM(b)});
+        if (hit != HTCLIENT)
+            return hit;
+        // Keep native title-bar buttons, dragging and the system menu. Native
+        // side/bottom frame hits outside our invisible grips belong to pixels.
+        const auto native = DefSubclassProc(w, m, a, b);
+        return native == HTCAPTION || native == HTSYSMENU || native == HTMINBUTTON ||
+                       native == HTMAXBUTTON || native == HTCLOSE
+                   ? native
+                   : HTCLIENT;
+    }
+#endif
     if (m == WM_SETCURSOR && reinterpret_cast<HWND>(a) == w) {
         auto& cursor = owner->cursor;
-        const auto shape =
+        auto shape =
             cursor.sizing && cursor.shape ? cursor.shape : FrameCursor::resizeShape(LOWORD(b));
+        if (!shape && LOWORD(b) != HTCLIENT && LOWORD(b) != HTNOWHERE)
+            shape = LoadCursorW(nullptr, IDC_ARROW);
         if (shape) {
             cursor.show(w, shape);
             return TRUE;
@@ -213,6 +247,18 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
             setSizingLimits(w, *reinterpret_cast<MINMAXINFO*>(b));
         }
         return result;
+    }
+    if (m == WM_SIZING || m == WM_WINDOWPOSCHANGING) {
+        const bool attaching = owner->attaching;
+        auto retained = owner->state;
+        const auto result = DefSubclassProc(w, m, a, b);
+        if (!attaching && retained->hwnd.load() == w && b) {
+            if (m == WM_SIZING)
+                constrainSizing(w, static_cast<UINT>(a), *reinterpret_cast<RECT*>(b));
+            else
+                constrainPosition(w, *reinterpret_cast<WINDOWPOS*>(b));
+        }
+        return m == WM_SIZING ? TRUE : result;
     }
     if (m == WM_ERASEBKGND && state.frameAvailable())
         return 1;
@@ -307,29 +353,41 @@ HRESULT attachWindow(const std::shared_ptr<WindowState>& state, HWND w) {
     RECT client{};
     GetClientRect(w, &client);
     auto style = GetWindowLongW(w, GWL_STYLE);
+    const bool fullscreen = fullscreenBeforeAttach(w);
+#ifdef DAW_X
+    const auto newStyle = (style & ~WS_CAPTION) | WS_POPUP | WS_THICKFRAME | WS_SYSMENU |
+                          WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+#else
     const auto newStyle = (style & ~WS_POPUP) | WS_OVERLAPPEDWINDOW;
+#endif
     RECT outer{0,
                0,
                client.right > 0 ? client.right : gameWidth,
                client.bottom > 0 ? client.bottom : gameHeight};
-    AdjustWindowRectEx(&outer, newStyle, GetMenu(w) != nullptr, GetWindowLongW(w, GWL_EXSTYLE));
+    // Keep a caption in both windowed editions; no side/bottom frame insets.
+    // A launcher that already maximized a bare popup owns its bounds and style.
     SetLastError(0);
-    const auto oldStyle = SetWindowLongW(w, GWL_STYLE, newStyle);
+    const auto oldStyle = fullscreen ? style : SetWindowLongW(w, GWL_STYLE, newStyle);
     if (owner->destroyed || (!oldStyle && GetLastError()))
         return fail();
+#ifndef DAW_X
+    outer.bottom += nativeCaptionHeight(w);
+#endif
     if (!SetWindowPos(w,
                       nullptr,
                       0,
                       0,
                       outer.right - outer.left,
                       outer.bottom - outer.top,
-                      SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED)) {
+                      SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED |
+                          (fullscreen ? SWP_NOSIZE : 0))) {
         if (!owner->destroyed)
             SetWindowLongW(w, GWL_STYLE, style);
         return fail();
     }
     if (owner->destroyed)
         return fail();
+    removeVisibleFrame(w);
     if (FAILED(trackWindow(w, state))) {
         SetWindowLongW(w, GWL_STYLE, style);
         return fail();
@@ -343,6 +401,15 @@ HRESULT attachWindow(const std::shared_ptr<WindowState>& state, HWND w) {
     // The desktop watchdog also works when session notification registration is
     // unavailable, and detects secure desktop changes for background windows.
     WTSRegisterSessionNotification(w, NOTIFY_FOR_THIS_SESSION);
+#ifdef DAW_X
+    if (!x::attachFrame(w))
+        log(L"X frame attachment failed");
+    if (owner->destroyed)
+        return fail();
+#endif
+    constrainInitialSize(w);
+    if (owner->destroyed)
+        return fail();
     owner->attaching = false;
     traceWindow(w, L"Attached");
     return DD_OK;

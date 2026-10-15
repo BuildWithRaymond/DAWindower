@@ -7,19 +7,21 @@ from pathlib import Path
 
 from inspect_pe import PE32
 
-SYSTEM_DLLS = {"kernel32.dll", "user32.dll", "gdi32.dll", "comctl32.dll", "wtsapi32.dll"}
+SYSTEM_DLLS = {"kernel32.dll", "user32.dll", "gdi32.dll", "comctl32.dll", "wtsapi32.dll", "dwmapi.dll"}
 EXPORTS = {"DAWindowerInitialize", "DAWindowerShutdown", "DAWindowerGetStats"}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path, help="CMake installation directory")
+    parser.add_argument("--edition", choices=("standard", "x"), default="standard")
     args = parser.parse_args()
+    filename = "DAWindowerX.dll" if args.edition == "x" else "DAWindower.dll"
     if not args.directory.is_dir():
         parser.error("package directory does not exist")
     entries = list(args.directory.iterdir())
-    if len(entries) != 1 or entries[0].name != "DAWindower.dll" or not entries[0].is_file():
-        parser.error("package must contain exactly one file: DAWindower.dll")
+    if len(entries) != 1 or entries[0].name != filename or not entries[0].is_file():
+        parser.error(f"package must contain exactly one file: {filename}")
     try:
         pe = PE32(entries[0])
         dependencies = {item["dll"].lower() for item in pe.imports()}
@@ -30,7 +32,8 @@ def main():
         parser.error("DAWindower must be a native x86 (i386) DLL")
     if not pe.characteristics & 0x2000:  # IMAGE_FILE_DLL in the COFF header.
         parser.error("PE image is not marked as a DLL")
-    unexpected = dependencies - SYSTEM_DLLS
+    system_dlls = SYSTEM_DLLS | ({"dwmapi.dll", "uxtheme.dll", "msimg32.dll"} if args.edition == "x" else set())
+    unexpected = dependencies - system_dlls
     if unexpected:
         parser.error(f"noncontract imports: {', '.join(sorted(unexpected))}")
     if exports != EXPORTS:

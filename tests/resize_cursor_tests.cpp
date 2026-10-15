@@ -58,7 +58,7 @@ void hiddenClient(HWND w, int expected = -1) {
 int main() {
     const auto initialCount = displayCount();
     const auto initialShape = GetCursor();
-    auto module = LoadLibraryA("DAWindower.dll");
+    auto module = LoadLibraryA(DAW_TEST_DLL_A);
     check(module != nullptr, "LoadLibrary-only setup");
     auto stop = reinterpret_cast<DAWindowerEntry>(GetProcAddress(module, "DAWindowerShutdown"));
     WNDCLASSW c{};

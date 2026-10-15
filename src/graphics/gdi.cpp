@@ -53,6 +53,11 @@ void untrackWindow(HWND window) {
         registry->erase(window);
 }
 
+bool tracksWindow(HWND window) {
+    const auto state = findWindow(window);
+    return state && state->hwnd.load() == window;
+}
+
 BOOL WINAPI windowBitBlt(HDC destination,
                          int x,
                          int y,

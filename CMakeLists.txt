@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.24)
-project(DAWindower VERSION 0.2.2 LANGUAGES CXX)
+project(DAWindower VERSION 0.2.3 LANGUAGES CXX)
 
 # Runtime contract: Windows x86, C++17 and a statically linked CRT.
 if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -16,48 +16,77 @@ endif()
 
 include(CTest)
 option(DAW_BUILD_PROXY_TESTS "Build the legacy development-only proxy comparison" OFF)
+option(DAW_BUILD_X "Build DAWindower X with its optional title bar and client controls" OFF)
+set(DAW_SYSTEM_LIBRARIES dxguid user32 gdi32 comctl32 wtsapi32 dwmapi)
+set(DAW_DLL_NAME DAWindower)
+set(DAW_EXPORTS src/DAWindower.def)
+if(DAW_BUILD_X)
+  set(DAW_DLL_NAME DAWindowerX)
+  set(DAW_EXPORTS src/x/DAWindowerX.def)
+  add_compile_definitions(DAW_X)
+  list(APPEND DAW_SYSTEM_LIBRARIES uxtheme msimg32)
+  if(DAW_BUILD_PROXY_TESTS)
+    message(FATAL_ERROR "X does not support the historical development-only proxy target.")
+  endif()
+endif()
+add_compile_definitions(DAW_TEST_DLL_A="${DAW_DLL_NAME}.dll" DAW_TEST_DLL_W=L"${DAW_DLL_NAME}.dll")
 
 # Geometry is shared by the DLL and tests; it has no desktop dependency.
-add_library(daw_geometry STATIC src/window/geometry.cpp)
+add_library(daw_geometry STATIC src/window/geometry.cpp src/window/aspect.cpp)
 target_include_directories(daw_geometry PUBLIC include)
 set(DAW_GRAPHICS
   src/graphics/draw.cpp
   src/graphics/surface.cpp
   src/graphics/gdi.cpp
   src/window/window.cpp
+  src/window/frame.cpp
   src/window/sizing.cpp)
+if(DAW_BUILD_X)
+  set(DAW_X_SOURCES src/x/frame.cpp src/x/name.cpp src/x/launch.cpp)
+  list(APPEND DAW_GRAPHICS ${DAW_X_SOURCES})
+endif()
 set(DAW_SOURCES
   src/main.cpp
   src/compatibility/bootstrap.cpp
   src/compatibility/imports.cpp
   src/compatibility/mutex.cpp
+  src/compatibility/geometry.cpp
   src/cursor/diagnostics.cpp
   ${DAW_GRAPHICS})
 
 # The only runtime distribution target.
-add_library(DAWindower SHARED ${DAW_SOURCES} src/DAWindower.def)
+add_library(DAWindower SHARED ${DAW_SOURCES} ${DAW_EXPORTS})
+set_target_properties(DAWindower PROPERTIES OUTPUT_NAME ${DAW_DLL_NAME})
 target_include_directories(DAWindower PRIVATE include src)
-target_link_libraries(DAWindower PRIVATE daw_geometry dxguid user32 gdi32 comctl32 wtsapi32)
+target_link_libraries(DAWindower PRIVATE daw_geometry ${DAW_SYSTEM_LIBRARIES})
 
 if(BUILD_TESTING)
   # Direct source tests exercise recovery without injecting into a retail client.
   add_executable(geometry_tests tests/geometry_tests.cpp)
   target_link_libraries(geometry_tests PRIVATE daw_geometry)
   add_test(NAME geometry COMMAND geometry_tests)
+  add_executable(aspect_tests tests/aspect_tests.cpp)
+  target_link_libraries(aspect_tests PRIVATE daw_geometry)
+  add_test(NAME aspect_geometry COMMAND aspect_tests)
+  set_tests_properties(aspect_geometry PROPERTIES LABELS "unit")
 
   add_executable(recovery_tests tests/recovery_tests.cpp ${DAW_GRAPHICS})
   target_include_directories(recovery_tests PRIVATE include src)
-  target_link_libraries(recovery_tests PRIVATE daw_geometry ddraw dxguid user32 gdi32 comctl32 wtsapi32)
+  target_link_libraries(recovery_tests PRIVATE daw_geometry ddraw ${DAW_SYSTEM_LIBRARIES})
   add_test(NAME surface_recovery_contract COMMAND recovery_tests)
 
   add_executable(presentation_recovery_tests
     tests/presentation_recovery_tests.cpp
     src/window/window.cpp
+    src/window/frame.cpp
     src/window/sizing.cpp
     src/graphics/gdi.cpp
     src/compatibility/imports.cpp)
   target_include_directories(presentation_recovery_tests PRIVATE include src)
-  target_link_libraries(presentation_recovery_tests PRIVATE daw_geometry dxguid user32 gdi32 comctl32 wtsapi32)
+  target_link_libraries(presentation_recovery_tests PRIVATE daw_geometry ${DAW_SYSTEM_LIBRARIES})
+  if(DAW_BUILD_X)
+    target_sources(presentation_recovery_tests PRIVATE ${DAW_X_SOURCES})
+  endif()
   add_test(NAME presentation_recovery_contract COMMAND presentation_recovery_tests)
 
   # LoadLibrary tests use the actual DLL beside their executable. The retail
@@ -65,7 +94,7 @@ if(BUILD_TESTING)
   add_executable(ddraw_harness tools/ddraw_harness.cpp)
   add_executable(retail_loadlibrary_test tools/retail_loadlibrary_test.cpp)
   target_link_libraries(retail_loadlibrary_test PRIVATE user32 gdi32)
-  foreach(target ddraw_harness retail_render_tests gdi_render_tests resize_tests resize_cursor_tests)
+  foreach(target ddraw_harness retail_render_tests gdi_render_tests resize_tests resize_cursor_tests borderless_tests)
     if(NOT TARGET ${target})
       add_executable(${target} tests/${target}.cpp)
     endif()
@@ -89,8 +118,33 @@ if(BUILD_TESTING)
   add_test(NAME gdi_render_contract COMMAND gdi_render_tests)
   add_test(NAME retail_render_loadlibrary_contract COMMAND retail_render_tests --load-only)
   add_test(NAME gdi_render_loadlibrary_contract COMMAND gdi_render_tests --load-only)
-  add_test(NAME smooth_resize_contract COMMAND resize_tests)
+  add_test(NAME native_aspect_resize_contract COMMAND resize_tests)
   add_test(NAME resize_cursor_contract COMMAND resize_cursor_tests)
+  add_test(NAME borderless_window_contract COMMAND borderless_tests)
+  add_test(NAME fullscreen_before_attach_contract COMMAND borderless_tests --before)
+  add_test(NAME fullscreen_after_attach_contract COMMAND borderless_tests --after)
+  add_test(NAME client_geometry_gate_contract COMMAND borderless_tests --gates)
+
+  add_executable(x_name_tests tests/x_name_tests.cpp src/x/name.cpp)
+  target_include_directories(x_name_tests PRIVATE src)
+  add_test(NAME x_name_contract COMMAND x_name_tests)
+  set_tests_properties(x_name_contract PROPERTIES LABELS "unit")
+  if(DAW_BUILD_X)
+    add_executable(x_titlebar_tests tests/x_titlebar_tests.cpp)
+    target_include_directories(x_titlebar_tests PRIVATE include)
+    target_link_libraries(x_titlebar_tests PRIVATE ddraw dxguid user32 gdi32)
+    add_dependencies(x_titlebar_tests DAWindower)
+    add_executable(x_launch_fixture tests/x_launch_fixture.cpp)
+    target_include_directories(x_launch_fixture PRIVATE include)
+    target_link_libraries(x_launch_fixture PRIVATE ddraw dxguid user32)
+    add_executable(x_launch_tests tests/x_launch_tests.cpp src/x/launch.cpp)
+    target_include_directories(x_launch_tests PRIVATE src)
+    add_dependencies(x_launch_tests DAWindower x_launch_fixture)
+    add_test(NAME x_launch_contract COMMAND x_launch_tests)
+    set_tests_properties(x_launch_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
+    add_test(NAME x_titlebar_contract COMMAND x_titlebar_tests "${DAW_DLL_NAME}.dll")
+    set_tests_properties(x_titlebar_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
+  endif()
 
   # Geometry is safe without a desktop. Native rendering tests share desktop
   # state and must not compete for visible windows/cursor state under ctest -j.
@@ -99,7 +153,9 @@ if(BUILD_TESTING)
     surface_recovery_contract presentation_recovery_contract directdraw_contract
     loadlibrary_only_contract dormant_unload_contract renamed_loadlibrary_contract
     retail_render_contract gdi_render_contract retail_render_loadlibrary_contract
-    gdi_render_loadlibrary_contract smooth_resize_contract resize_cursor_contract
+    gdi_render_loadlibrary_contract native_aspect_resize_contract resize_cursor_contract
+    borderless_window_contract fullscreen_before_attach_contract fullscreen_after_attach_contract
+    client_geometry_gate_contract
     PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
 
   # Optional historical comparison route. Never installed with the standalone DLL.
@@ -107,7 +163,7 @@ if(BUILD_TESTING)
     add_library(ddraw_proxy SHARED ${DAW_SOURCES} src/ddraw.def)
     target_compile_definitions(ddraw_proxy PRIVATE DAW_PROXY)
     target_include_directories(ddraw_proxy PRIVATE include src)
-    target_link_libraries(ddraw_proxy PRIVATE daw_geometry dxguid user32 gdi32 comctl32 wtsapi32)
+    target_link_libraries(ddraw_proxy PRIVATE daw_geometry ${DAW_SYSTEM_LIBRARIES})
     set_target_properties(ddraw_proxy PROPERTIES OUTPUT_NAME ddraw
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/proxy/$<CONFIG>"
       ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/proxy/$<CONFIG>")
