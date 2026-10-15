@@ -22,6 +22,7 @@ is not a requirement for today's standalone DLL.
 
 | Record | Scope |
 | --- | --- |
+| [Downscaling performance](scaling-validation.md) | Reproduced RGB565 shrink cost, 32-bit presentation, exact-pixel regression and packaged standard/X CPU measurements. |
 | [Game icons and native caption spacing](icon-validation.md) | Version 0.2.3 icon restoration in both editions and standard native caption spacing. |
 | [X and borderless candidate](x-borderless-validation.md) | Version 0.2.3 candidate; both editions, launcher fullscreen and scoped client geometry guards. |
 | [Free resize and visible frame cursors](smooth-resize-validation.md) | Versions 0.2.1–0.2.2; current resize/cursor and exact package evidence. |

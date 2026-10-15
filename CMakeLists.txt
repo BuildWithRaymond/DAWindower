@@ -92,6 +92,7 @@ if(BUILD_TESTING)
     target_sources(presentation_recovery_tests PRIVATE ${DAW_X_SOURCES})
   endif()
   add_test(NAME presentation_recovery_contract COMMAND presentation_recovery_tests)
+  add_test(NAME presentation_format_contract COMMAND presentation_recovery_tests --format)
 
   # LoadLibrary tests use the actual DLL beside their executable. The retail
   # helper is built for manual acceptance but is deliberately not a CTest case.
@@ -166,7 +167,7 @@ if(BUILD_TESTING)
   # state and must not compete for visible windows/cursor state under ctest -j.
   set_tests_properties(geometry PROPERTIES LABELS "unit")
   set_tests_properties(
-    surface_recovery_contract presentation_recovery_contract directdraw_contract
+    surface_recovery_contract presentation_recovery_contract presentation_format_contract directdraw_contract
     loadlibrary_only_contract dormant_unload_contract renamed_loadlibrary_contract
     retail_render_contract gdi_render_contract retail_render_loadlibrary_contract
     gdi_render_loadlibrary_contract native_aspect_resize_contract resize_cursor_contract

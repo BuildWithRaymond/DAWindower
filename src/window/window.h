@@ -26,6 +26,8 @@ struct WindowState {
     HBITMAP bitmap = nullptr;
     HGDIOBJ previousBitmap = nullptr;
     WORD* pixels = nullptr;
+    // UI-thread presentation only. Game/cursor reads retain the RGB565 canvas.
+    std::unique_ptr<DWORD[]> presentationPixels;
     std::atomic<DWORD> generation{0};
     UINT presentationMessage = 0;
     std::atomic<bool> presentationPending{false};

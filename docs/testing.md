@@ -5,7 +5,7 @@ of LoadLibrary-only retail startup, and a simulated loss is not a physical monit
 
 ## Automated test map
 
-The standard build defines 21 contracts; X defines 22. `unit` requires no desktop; `desktop`
+The standard build defines 22 contracts; X defines 23. `unit` requires no desktop; `desktop`
 uses native Windows graphics/window behavior. Desktop cases are serialized even
 when CTest is invoked with parallel execution.
 
@@ -15,6 +15,7 @@ when CTest is invoked with parallel execution.
 | `aspect_geometry` | [aspect_tests.cpp](../tests/aspect_tests.cpp) | Native 4:3 nearest-pixel rounding, fit bounds, one-pixel sequences and overflow. |
 | `surface_recovery_contract` | [recovery_tests.cpp](../tests/recovery_tests.cpp) | Lost source/destination, retained pixels, keys, COM/attachment identity, leases and bounded repair/recreation. |
 | `presentation_recovery_contract` | [presentation_recovery_tests.cpp](../tests/presentation_recovery_tests.cpp) | Failed GDI/queue operations; timer-only retained-frame recovery and minimize/restore. |
+| `presentation_format_contract` | Same presentation test, `--format` | 32-bit desktop scaling; all 65,536 RGB565 colors and exact Windows sampling at six native/downscaled/upscaled sizes, changed frames and unchanged logical canvas. |
 | `directdraw_contract` | [ddraw_harness.cpp](../tools/ddraw_harness.cpp) | Wrapped factory, caps, drawing, lifetimes and shutdown. |
 | `loadlibrary_only_contract` | Same harness | Factory interception with no initializer call. |
 | `dormant_unload_contract` | Same harness | Pre-initialization gate removal and native factory after unload. |

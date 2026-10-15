@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstring>
 #include <new>
+#include <emmintrin.h>
 #include <wtsapi32.h>
 
 namespace daw {
@@ -22,6 +23,30 @@ struct Bitmap565 {
 };
 
 thread_local bool painting = false;
+
+void expandPresentation(const WORD* source, DWORD* destination) {
+    static_assert((gameWidth * gameHeight) % 8 == 0);
+    const auto zero = _mm_setzero_si128();
+    auto expand = [](__m128i value) {
+        const auto red = _mm_slli_epi32(_mm_and_si128(value, _mm_set1_epi32(0xf800)), 8);
+        const auto green = _mm_slli_epi32(_mm_and_si128(value, _mm_set1_epi32(0x07e0)), 5);
+        const auto blue = _mm_slli_epi32(_mm_and_si128(value, _mm_set1_epi32(0x001f)), 3);
+        const auto bgr = _mm_or_si128(_mm_or_si128(red, green), blue);
+        // Replicate high color bits into the low bits, matching GDI's RGB565
+        // conversion exactly, including full-intensity white and cursor colors.
+        return _mm_or_si128(
+            bgr,
+            _mm_or_si128(_mm_and_si128(_mm_srli_epi32(bgr, 5), _mm_set1_epi32(0x070007)),
+                         _mm_and_si128(_mm_srli_epi32(bgr, 6), _mm_set1_epi32(0x000300))));
+    };
+    for (int offset = 0; offset < gameWidth * gameHeight; offset += 8) {
+        const auto packed = _mm_loadu_si128(reinterpret_cast<const __m128i*>(source + offset));
+        _mm_storeu_si128(reinterpret_cast<__m128i*>(destination + offset),
+                         expand(_mm_unpacklo_epi16(packed, zero)));
+        _mm_storeu_si128(reinterpret_cast<__m128i*>(destination + offset + 4),
+                         expand(_mm_unpackhi_epi16(packed, zero)));
+    }
+}
 
 // Native frame arrows temporarily borrow visibility from the game's hidden OS
 // cursor. This ownership is separate from logical software-cursor composition.
@@ -301,7 +326,7 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
 } // namespace
 
 HRESULT attachWindow(const std::shared_ptr<WindowState>& state, HWND w) {
-    if (!state->pixels || !state->canvas)
+    if (!state->pixels || !state->canvas || !state->presentationPixels)
         return E_OUTOFMEMORY;
     if (!state->presentationMessage)
         return E_FAIL;
@@ -392,6 +417,7 @@ HRESULT attachWindow(const std::shared_ptr<WindowState>& state, HWND w) {
 }
 
 WindowState::WindowState() {
+    presentationPixels.reset(new (std::nothrow) DWORD[gameWidth * gameHeight]);
     presentationMessage = RegisterWindowMessageW(L"DAWindower.Present.2026");
     Bitmap565 info{{sizeof(BITMAPINFOHEADER),
                     gameWidth,
@@ -486,29 +512,32 @@ HRESULT WindowState::copyTo(IDirectDrawSurface* surface, DWORD& copiedGeneration
 bool WindowState::paint(HDC dc, int width, int height) {
     if (width <= 0 || height <= 0)
         return true;
-    if (!dc)
+    if (!dc || !presentationPixels)
         return false;
     if (painting)
         return true;
     painting = true;
     RECT client{0, 0, width, height};
     const auto v = viewport(width, height);
-    Bitmap565 dibInfo{{sizeof(BITMAPINFOHEADER),
-                       gameWidth,
-                       -gameHeight,
-                       1,
-                       16,
-                       BI_BITFIELDS,
-                       gameWidth * gameHeight * 2,
-                       0,
-                       0,
-                       0,
-                       0},
-                      {0xf800, 0x07e0, 0x001f}};
+    BITMAPINFO dibInfo{};
+    dibInfo.bmiHeader = {sizeof(BITMAPINFOHEADER),
+                         gameWidth,
+                         -gameHeight,
+                         1,
+                         32,
+                         BI_RGB,
+                         gameWidth * gameHeight * 4,
+                         0,
+                         0,
+                         0,
+                         0};
     const auto previous = SetStretchBltMode(dc, COLORONCOLOR);
     AcquireSRWLockShared(&lock);
     bool ok = true;
     if (hasFrame) {
+        // Convert the completed frame at presentation. Scaling RGB565 directly
+        // can take GDI's expensive downscale path even one pixel below native.
+        expandPresentation(pixels, presentationPixels.get());
         const auto lines = StretchDIBits(dc,
                                          v.x,
                                          v.y,
@@ -518,8 +547,8 @@ bool WindowState::paint(HDC dc, int width, int height) {
                                          0,
                                          gameWidth,
                                          gameHeight,
-                                         pixels,
-                                         reinterpret_cast<const BITMAPINFO*>(&dibInfo),
+                                         presentationPixels.get(),
+                                         &dibInfo,
                                          DIB_RGB_COLORS,
                                          SRCCOPY);
         ok = lines != 0 && lines != GDI_ERROR;

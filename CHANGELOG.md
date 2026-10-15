@@ -5,6 +5,9 @@ changes do not imply a newly tested retail release.
 
 ## Unreleased
 
+- Avoid the RGB565 downscaling performance cliff in both editions by expanding
+  completed frames into a reusable 32-bit presentation buffer. Preserve native
+  color conversion, nearest-neighbor sampling and the game's RGB565 cursor canvas.
 - Share X's caption renderer with the standard edition: charcoal-to-black
   shading, game icon, three window buttons and high-contrast support. Standard
   preserves the host's title; character names and extra client actions remain

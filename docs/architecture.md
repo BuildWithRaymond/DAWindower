@@ -59,7 +59,8 @@ flowchart LR
     S --> C[Retained 640 x 480 canvas]
     G[Game GDI cursor reads and writes] <--> C
     C --> Q[Coalesced window presentation message]
-    Q --> P[Nearest-neighbor GDI presentation]
+    Q --> B[Reusable 32-bit presentation buffer]
+    B --> P[Nearest-neighbor GDI presentation]
     P --> W[Whole client rectangle]
 ```
 
@@ -78,6 +79,15 @@ boundary lets adjacent frame, cursor-erasure and cursor-draw writes finish befor
 painting. Recovery retries use the same boundary. Painting a failed display
 operation immediately from an unrelated timer could reintroduce flicker.
 
+At that boundary, SSE2 expands the completed RGB565 canvas into a per-window
+32-bit BGRX buffer before `StretchDIBits`. Replicating the color bits preserves
+GDI's RGB565 colors and `COLORONCOLOR` sampling. Keeping format conversion out
+of GDI's RGB565 downscaling path avoids the measured one-pixel shrink performance
+cliff. The buffer is allocated once, adds 1.17 MiB per window and is released
+with `WindowState`; failure to allocate it returns `E_OUTOFMEMORY` on attachment.
+Only the HWND thread uses this presentation buffer. The canvas lock continues
+to protect its RGB565 input, and game/cursor reads still use the original canvas.
+
 A desktop presentation failure must not ask the game to repeat an already
 completed `Flip`, `Unlock`, `ReleaseDC` or successful drawing operation. The
 retained frame, not the game transaction, is retried.
@@ -89,7 +99,7 @@ retained frame, not the game transaction, is retried.
 | `Draw` wrapper | COM reference count; owns a native DirectDraw reference and recovery binding. |
 | `Surface` wrapper | COM reference count; owns its native surface and retains its `Draw`. The registry is keyed by public wrapper pointers; registry/`primary` entries are weak. |
 | Emulated backbuffer | The front wrapper owns an attachment reference. Returning it adds a reference for the caller. |
-| `WindowState` | Shared by the device and attached subclass; owns the DIB, canvas DC and retained pixels. |
+| `WindowState` | Shared by the device and attached subclass; owns the DIB, canvas DC, retained RGB565 pixels and 32-bit presentation buffer. |
 | Window registry | Weak `WindowState` entries, removed when the window is destroyed. |
 | `RecoveryBinding` | Shared by `Draw`, weakly referenced by the window; guards a nullable `Draw*` with a lifetime lock. |
 | `PixelStore` | CPU snapshot shared by duplicate surfaces; revision numbers synchronize replaced native backing. |
