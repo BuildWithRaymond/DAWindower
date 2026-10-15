@@ -190,12 +190,15 @@ guessed `ShowCursor` baseline or add an OS cursor over the game's software curso
 
 Both editions attach the shared non-client subclass after the renderer attaches.
 Its caption-only `WM_NCCALCSIZE` leaves game pixels flush with both sides and the
-bottom; invisible edge hit regions retain native resizing. Both editions use the
-shared bounded name reader for `Dark Ages · CharacterName`, falling back to
-`Dark Ages` when no valid name is available. The optional
+bottom; invisible edge hit regions retain native resizing. Both editions preserve
+the host's window title. The caption reads it with `GetWindowTextW` on attachment
+and after forwarding `WM_SETTEXT`, so the accepted window text is also the painted
+text. Paint and a one-second window-title check also catch external setters that
+do not deliver `WM_SETTEXT`. No character-name memory reader is used. The optional
 [X edition](x-edition.md) enables two extra actions in that
 same renderer. Its launch worker owns only a newly created child; it never paints
-or changes the parent cursor.
+or changes the parent cursor. Its completion timer exists only while that worker
+is active.
 
 For exact loading details, read [integration](integration.md). For historical
 implementation choices, read [the recovery design](standalone-recovery-design.md).

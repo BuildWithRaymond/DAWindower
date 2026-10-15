@@ -52,7 +52,7 @@ int main(int argc, char**) {
         return 22;
     wchar_t title[256]{};
     GetWindowTextW(window, title, 256);
-    if (std::wcscmp(title, L"Dark Ages") != 0)
+    if (std::wcscmp(title, L"Fixture") != 0)
         return 23;
     DAWindowerStats stats{sizeof(stats)};
     auto getStats = reinterpret_cast<DAWindowerEntry>(GetProcAddress(module, "DAWindowerGetStats"));
@@ -63,7 +63,9 @@ int main(int argc, char**) {
         if (!clickNew(window) || !clickNew(window))
             return 27;
         const auto deadline = GetTickCount64() + 30000;
-        while (GetFileAttributesW(L"x-fixture-result.bin") == INVALID_FILE_ATTRIBUTES &&
+        const auto menu = GetSystemMenu(window, FALSE);
+        while ((GetFileAttributesW(L"x-fixture-result.bin") == INVALID_FILE_ATTRIBUTES ||
+                (GetMenuState(menu, 0xe810, MF_BYCOMMAND) & MF_GRAYED)) &&
                GetTickCount64() < deadline) {
             MSG message{};
             while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
@@ -72,6 +74,11 @@ int main(int argc, char**) {
         }
         if (GetFileAttributesW(L"x-fixture-result.bin") == INVALID_FILE_ATTRIBUTES)
             return 28;
+        if (GetMenuState(menu, 0xe810, MF_BYCOMMAND) & MF_GRAYED)
+            return 29;
+        GetWindowTextW(window, title, 256);
+        if (std::wcscmp(title, L"Fixture") != 0)
+            return 30;
     }
     auto file = CreateFileW(parent ? L"x-ui-parent-result.bin" : L"x-fixture-result.bin",
                             GENERIC_WRITE,

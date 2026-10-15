@@ -1,5 +1,4 @@
 #include "caption.h"
-#include "window/name.h"
 #ifdef DAW_X
 #include "x/launch.h"
 #endif
@@ -139,13 +138,13 @@ class Frame {
     HFONT font = nullptr;
     HWND tooltip = nullptr;
     UINT_PTR hoverTimer = 0;
-    UINT_PTR clockTimer = 0;
-    CharacterName characterName;
+    UINT_PTR titleTimer = 0;
 #ifdef DAW_X
+    UINT_PTR launchTimer = 0;
     std::shared_ptr<LaunchStatus> launch;
     wchar_t launchError[256]{};
 #endif
-    wchar_t title[256] = L"Dark Ages";
+    wchar_t title[256]{};
 
     ~Frame() {
         if (tooltip)
@@ -184,9 +183,26 @@ class Frame {
         refreshing = false;
     }
 
-    void updateTitle() {
+    bool refreshTitle(bool* changed = nullptr) {
+        wchar_t next[256]{};
+        // Let USER32 perform text conversion and report the host's accepted
+        // title rather than interpreting a WM_SETTEXT payload ourselves.
+        GetWindowTextW(window, next, 256);
+        if (destroyed)
+            return false;
+        const bool different = std::wcscmp(title, next) != 0;
+        if (different)
+            wcscpy_s(title, next);
+        if (changed)
+            *changed = different;
+        return true;
+    }
+
 #ifdef DAW_X
+    void updateLaunch() {
         if (launch && launch->complete.load(std::memory_order_acquire)) {
+            KillTimer(window, launchTimer);
+            launchTimer = 0;
             const auto result = launch->result;
             launch.reset();
             if (result.error) {
@@ -199,18 +215,13 @@ class Frame {
             EnableMenuItem(GetSystemMenu(window, FALSE), newCommand, MF_BYCOMMAND | MF_ENABLED);
             paint();
         }
-#endif
-        wchar_t character[13]{}, next[256]{};
-        if (characterName.read(character))
-            swprintf_s(next, L"Dark Ages \u00b7 %s", character);
-        else
-            wcscpy_s(next, L"Dark Ages");
-        if (std::wcscmp(next, title) != 0)
-            SetWindowTextW(window, next);
     }
+#endif
 
     void paint(HDC supplied = nullptr) {
         if (destroyed || IsIconic(window) || !windowedFrame(window))
+            return;
+        if (!refreshTitle())
             return;
         const auto icon = smallWindowIcon(window);
         if (destroyed)
@@ -458,6 +469,14 @@ class Frame {
             }
             launch = std::make_shared<LaunchStatus>();
             work->status = launch;
+            launchTimer = SetTimer(window, frameId + 3, 1000, nullptr);
+            if (!launchTimer) {
+                launch.reset();
+                wcscpy_s(launchError,
+                         L"New client failed: could not create completion timer. Click to retry.");
+                paint();
+                return;
+            }
             const auto thread = _beginthreadex(nullptr, 0, launchWorker, work.get(), 0, nullptr);
             if (!thread) {
                 launch.reset();
@@ -472,12 +491,16 @@ class Frame {
             launch.reset();
             wcscpy_s(launchError, L"New client failed: insufficient memory. Click to retry.");
         }
+        if (!launch && launchTimer) {
+            KillTimer(window, launchTimer);
+            launchTimer = 0;
+        }
         paint();
     }
 #endif
 };
 
-// Nested DefSubclassProc/SetWindowText/SetCapture calls can destroy the HWND.
+// Nested DefSubclassProc/GetWindowText/SetCapture calls can destroy the HWND.
 // Keep the frame object alive until every callback already on its stack returns.
 struct Call {
     Frame* frame;
@@ -498,8 +521,12 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
     if (m == WM_NCDESTROY) {
         f->destroyed = true;
         f->hideTip();
-        if (f->clockTimer)
-            KillTimer(w, f->clockTimer);
+        if (f->titleTimer)
+            KillTimer(w, f->titleTimer);
+#ifdef DAW_X
+        if (f->launchTimer)
+            KillTimer(w, f->launchTimer);
+#endif
         RemoveWindowSubclass(w, subclass, id);
         return DefSubclassProc(w, m, a, b);
     }
@@ -607,14 +634,24 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
         f->showTip();
         return 0;
     }
-    if (m == WM_TIMER && a == f->clockTimer && f->clockTimer) {
-        f->updateTitle();
+    if (m == WM_TIMER && a == f->titleTimer && f->titleTimer) {
+        // External SetWindowText can update USER32's stored title without
+        // delivering WM_SETTEXT to this process. Read only window text here.
+        bool changed = false;
+        if (f->refreshTitle(&changed) && changed)
+            f->paint();
         return 0;
     }
-    if (m == WM_SETTEXT && b && reinterpret_cast<const wchar_t*>(b) != f->title)
-        wcsncpy_s(f->title, reinterpret_cast<const wchar_t*>(b), _TRUNCATE);
+#ifdef DAW_X
+    if (m == WM_TIMER && a == f->launchTimer && f->launchTimer) {
+        f->updateLaunch();
+        return 0;
+    }
+#endif
     const auto result = DefSubclassProc(w, m, a, b);
     if (!f->destroyed) {
+        if (m == WM_SETTEXT && !f->refreshTitle())
+            return result;
         if (m == WM_DPICHANGED || m == WM_THEMECHANGED || m == WM_SETTINGCHANGE ||
             m == WM_DWMCOMPOSITIONCHANGED)
             f->refreshStyle();
@@ -642,6 +679,8 @@ bool attachCaption(HWND window) {
         return false;
     }
     Call keep(f);
+    if (!f->refreshTitle())
+        return false;
     RECT original{};
     GetClientRect(window, &original);
     f->refreshStyle();
@@ -695,9 +734,9 @@ bool attachCaption(HWND window) {
             f->tooltip = nullptr;
         }
     }
-    SetWindowTextW(window, f->title);
+    f->paint();
     if (!f->destroyed)
-        f->clockTimer = SetTimer(window, frameId + 2, 1000, nullptr);
+        f->titleTimer = SetTimer(window, frameId + 2, 1000, nullptr);
     return !f->destroyed;
 }
 } // namespace daw

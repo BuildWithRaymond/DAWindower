@@ -41,8 +41,8 @@ ctest --preset unit-release
 ctest --preset unit-debug
 ```
 
-These select viewport/aspect geometry and the shared bounded name-reader/build-guard checks. They do not establish that the renderer or
-recovery works; use the full interactive suite and actual-client checks for that.
+These select viewport/aspect geometry. They do not establish that caption updates,
+rendering or recovery work; use the full interactive suite and actual-client checks for that.
 
 The optional X edition has separate `windows-x86-x`, `x-release` and `x-debug`
 presets and its own build/install directories. See [DAWindower X](x-edition.md).

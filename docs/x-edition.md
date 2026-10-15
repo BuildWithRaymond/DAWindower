@@ -3,7 +3,7 @@
 X adds window controls to DAWindower's existing renderer. It is an optional
 edition, distributed as **one `DAWindowerX.dll`**, with Windows system dependencies
 only. Use one edition per client. Both editions share the gradient caption renderer,
-`Dark Ages · CharacterName` title and loading contract. Standard `DAWindower.dll`
+host-controlled window title and loading contract. Standard `DAWindower.dll`
 has three ordinary window controls; X adds two client actions.
 
 [![Actual DAWindower X client with a black gradient title bar, New client and native-size controls](images/x-native.png)](images/x-native.png)
@@ -48,29 +48,20 @@ as described in the [integration guide](integration.md), substituting
 transaction clones the running x86 executable and uses the same-bitness Windows
 system-loader route tested by the development fixtures.
 
-## Character title and client support
+## Window title
 
-Both editions' character title uses bounded, read-only sampling once per second. It never
-hooks networking or writes client state. Unknown clients, unavailable buffers
-and invalid names display `Dark Ages`.
+Both editions display the title supplied by the game or launcher, including a
+character name when the host provides one. The caption reads `GetWindowTextW` on
+attachment and after forwarding each `WM_SETTEXT` to the host. This preserves the
+accepted title, including text the host changes or rejects and intentionally empty
+titles, while USER32 handles ANSI/Unicode conversion. The caption does not rewrite
+the native window title. Captions also read window text on paint and once per
+second, repainting when it changes, because external setters can update the stored
+title without delivering `WM_SETTEXT` to this process.
 
-Initial layout support is limited to the inspected installed 7.41 executable:
-
-```text
-SHA256: b168856a22a5315d2eb0fc942ca1cb6ef38e81035a445bc2cc9710d3d1a5715f
-PE timestamp: 0x56fb6f2d
-SizeOfImage:  0x506000
-Entry RVA:    0x22b2d9
-Name RVA:     0x33d910 (13-byte buffer, at most 12 ASCII letters plus terminator)
-Version RVA:  0x3505b8 (16-bit value 741)
-```
-
-The runtime checks layout identifiers, a name-address instruction reference and
-the client version before accepting a name. These are compatibility guards,
-not cryptographic executable attestation. Echo's 7.41 profile independently
-references the same name buffer; that evidence does not establish successful
-login/logout timing. Actual-client title acceptance must be recorded separately.
-Do not add an offset for another client without identifying and testing it.
+Neither edition reads character-name buffers or polls game memory for titles.
+Title handling needs no executable-specific character offset. X's separate
+launch-completion timer runs only while its own New client worker is active.
 
 ## Build and package
 
@@ -94,15 +85,15 @@ none is distributed.
 
 - [Shared caption](../src/window/caption.cpp): non-client painting, hit regions, UI lifetime,
   tooltip/menu actions and asynchronous launch ownership.
-- [Shared name reader](../src/window/name.cpp): client layout guard, bounded copies and name validation.
 - [Launch transaction](../src/x/launch.cpp): suspended child, injection, resume and failure cleanup.
 - [Approved design](designs/2026-10-14-dawindower-x.md): scope and implementation sequence.
 
 The existing rendering, recovery, cursor and resizing contracts run for both
-editions, including caption and name-boundary contracts. X adds extra frame controls
+editions, including ANSI/Unicode caption and accepted-title contracts. X adds extra frame controls
 and synthetic child-launch contracts. A
 synthetic fixture proves injection ordering and UI wiring, not retail gameplay
-or successful-login timing. The user confirmed login-name display, native reset,
+or host-specific login-title timing. Earlier prototype name-reader observations
+are historical; the current title behavior uses only window text. The user confirmed native reset,
 New client and normal graphics/input on the initial X prototype. Later actual
 checks confirmed retained title bars, smooth resizing, native-size startup and
 all five corrected tooltips. Exact build scopes and remaining transition tests:

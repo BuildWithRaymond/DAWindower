@@ -1,5 +1,9 @@
 # DAWindower X
 
+Historical design. Current title behavior is defined in
+[window title ownership](2026-10-15-window-title-ownership.md); neither edition retains
+the character-memory reader described below.
+
 Approved layout, October 14, 2026:
 
 ```text

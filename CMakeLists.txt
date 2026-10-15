@@ -41,7 +41,6 @@ set(DAW_GRAPHICS
   src/window/icon.cpp
   src/window/frame.cpp
   src/window/caption.cpp
-  src/window/name.cpp
   src/window/sizing.cpp)
 if(DAW_BUILD_X)
   set(DAW_X_SOURCES src/x/launch.cpp)
@@ -84,7 +83,6 @@ if(BUILD_TESTING)
     src/window/icon.cpp
     src/window/frame.cpp
     src/window/caption.cpp
-    src/window/name.cpp
     src/window/sizing.cpp
     src/graphics/gdi.cpp
     src/compatibility/imports.cpp)
@@ -139,19 +137,17 @@ if(BUILD_TESTING)
   add_dependencies(window_icon_tests DAWindower)
   add_test(NAME window_icon_contract COMMAND window_icon_tests)
   set_tests_properties(window_icon_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
-  add_executable(titlebar_tests tests/titlebar_tests.cpp)
-  target_include_directories(titlebar_tests PRIVATE include)
+  add_executable(titlebar_tests tests/titlebar_tests.cpp src/compatibility/imports.cpp)
+  target_include_directories(titlebar_tests PRIVATE include src)
   target_link_libraries(titlebar_tests PRIVATE ddraw dxguid user32 gdi32 dwmapi)
   add_dependencies(titlebar_tests DAWindower)
   if(NOT DAW_BUILD_X)
     add_test(NAME standard_titlebar_contract COMMAND titlebar_tests "${DAW_DLL_NAME}.dll")
-    set_tests_properties(standard_titlebar_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
+    add_test(NAME standard_ansi_titlebar_contract COMMAND titlebar_tests "${DAW_DLL_NAME}.dll" --ansi)
+    set_tests_properties(standard_titlebar_contract standard_ansi_titlebar_contract
+      PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
   endif()
 
-  add_executable(character_name_tests tests/character_name_tests.cpp src/window/name.cpp)
-  target_include_directories(character_name_tests PRIVATE src)
-  add_test(NAME character_name_contract COMMAND character_name_tests)
-  set_tests_properties(character_name_contract PROPERTIES LABELS "unit")
   if(DAW_BUILD_X)
     add_executable(x_launch_fixture tests/x_launch_fixture.cpp)
     target_include_directories(x_launch_fixture PRIVATE include)
@@ -162,7 +158,9 @@ if(BUILD_TESTING)
     add_test(NAME x_launch_contract COMMAND x_launch_tests)
     set_tests_properties(x_launch_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
     add_test(NAME x_titlebar_contract COMMAND titlebar_tests "${DAW_DLL_NAME}.dll")
-    set_tests_properties(x_titlebar_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
+    add_test(NAME x_ansi_titlebar_contract COMMAND titlebar_tests "${DAW_DLL_NAME}.dll" --ansi)
+    set_tests_properties(x_titlebar_contract x_ansi_titlebar_contract
+      PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
   endif()
 
   # Geometry is safe without a desktop. Native rendering tests share desktop

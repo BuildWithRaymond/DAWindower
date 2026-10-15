@@ -31,14 +31,21 @@ Windows system components. No proxy DLL, configuration files or extra runtime.
 
 ## Choose your edition
 
+**Standard stays barebones:** familiar dawnd-style rendering and windowing for
+launchers and other projects, with fixes for known rendering, recovery and window
+bugs. **New features and extra controls go to X.** Core bug fixes and renderer
+maintenance remain shared between both editions.
+
 | Edition | What you get |
 | --- | --- |
-| **DAWindower**<br>`DAWindower.dll` | Black gradient title bar with **Dark Ages · CharacterName** and minimize, maximize/restore and close controls. |
-| **DAWindower X**<br>`DAWindowerX.dll` | Black gradient title bar, character name, **+** New client, **1:1** native-size reset and button tooltips. |
+| **DAWindower**<br>`DAWindower.dll` | Black gradient title bar with the client-supplied title and minimize, maximize/restore and close controls. |
+| **DAWindower X**<br>`DAWindowerX.dll` | Same title behavior, **+** New client, **1:1** native-size reset and button tooltips. |
 
 Same renderer and recovery. Choose **one edition per client**.
-Both editions show `Dark Ages` when no supported character name is available.
-[X controls and supported clients →](docs/x-edition.md)
+Both editions preserve titles supplied by the game or launcher, including character
+names when provided. Captions refresh from Windows title text, including updates
+from another process; neither edition reads character-name buffers from game memory.
+[X controls and title behavior →](docs/x-edition.md)
 
 ## Why we changed resized rendering
 

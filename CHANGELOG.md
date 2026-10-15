@@ -5,13 +5,18 @@ changes do not imply a newly tested retail release.
 
 ## Unreleased
 
+- Remove character-name memory reading and name polling from both editions.
+  Preserve the client/launcher title on attachment and refresh the painted caption
+  with `GetWindowTextW` after `WM_SETTEXT` is processed, including ANSI callers,
+  host-rejected/rewritten titles and empty text. Re-read window text on paint and
+  once per second to catch external setters that bypass `WM_SETTEXT`. X checks
+  launch completion only while its own worker is active.
 - Avoid the RGB565 downscaling performance cliff in both editions by expanding
   completed frames into a reusable 32-bit presentation buffer. Preserve native
   color conversion, nearest-neighbor sampling and the game's RGB565 cursor canvas.
 - Share X's caption renderer with the standard edition: charcoal-to-black
   shading, game icon, three window buttons and high-contrast support. Standard
-  now shares X's `Dark Ages · CharacterName` title and once-per-second name
-  updates, with `Dark Ages` as the fallback. Extra client actions remain X-only.
+  shares the host-controlled window title with X. Extra client actions remain X-only.
   Both editions own the full caption with native caption painting disabled.
 - Restore the game's first executable icon in both editions, matching dawnd's
   visible icon behavior. Preserve launcher/class icons; the shared caption paints
@@ -22,7 +27,7 @@ changes do not imply a newly tested retail release.
   or bottom frame margins; include the caption in continuous aspect sizing.
 - Continuous corner projection removes reproduced backward size jumps while
   retaining nearest-pixel sizing across native tracking limits.
-- X: Dark Ages/character title, charcoal-to-black gradient, button tooltips,
+- X: host-controlled title, charcoal-to-black gradient, button tooltips,
   exact native-size reset and direct suspended/injected New client action.
 - Preserve completed launcher popup/fullscreen selection before or after attach;
   suspend windowed constraints there. Guard scoped client geometry/style imports

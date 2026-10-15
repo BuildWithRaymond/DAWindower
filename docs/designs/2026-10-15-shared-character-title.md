@@ -1,5 +1,8 @@
 # Shared character title
 
+Historical design, superseded by [window title ownership](2026-10-15-window-title-ownership.md).
+The memory reader described below has been removed from both editions.
+
 The standard edition will show the same `Dark Ages · CharacterName` title as X,
 as requested on October 15, 2026. When the existing reader cannot obtain a valid
 name, both editions show `Dark Ages`.
