@@ -9,7 +9,7 @@ and an optional edition with extra window controls.
 
 [![Windows build](https://github.com/BuildWithRaymond/DAWindower/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/BuildWithRaymond/DAWindower/actions/workflows/ci.yml?query=branch%3Amain)
 
-[Get started](#get-started) · [Performance](#why-we-changed-resized-rendering) · [Launcher guide](docs/integration.md) · [Contribute](CONTRIBUTING.md)
+[Get started](#get-started) · [Repository cleanup](#repository-cleanup-and-organization) · [Launcher guide](docs/integration.md) · [Contribute](CONTRIBUTING.md)
 
 </div>
 
@@ -47,44 +47,23 @@ names when provided. Captions refresh from Windows title text, including updates
 from another process; neither edition reads character-name buffers from game memory.
 [X controls and title behavior →](docs/x-edition.md)
 
-## Why we changed resized rendering
+## Repository cleanup and organization
 
-A report of sharply higher CPU usage after resizing led us to test smaller
-windows. Shrinking the game area from **640×480 to 639×479** increased measured
-CPU time per frame from **2.34 ms to 25.78 ms—about 11× the work for a one-pixel
-shrink**. Even **636×477**, an exact 4:3 size, took 24.34 ms. Small resized windows
-were taking a disproportionate amount of CPU, especially costly with multiple
-clients running.
+The latest maintenance pass makes the codebase easier to read, navigate and
+contribute to:
 
-The expensive path combined the game's 16-bit RGB565 color conversion with
-Windows' image shrinking. The **0.2.3 source candidate** keeps the game's native
-canvas and software cursor, converts each completed frame into a reusable
-32-bit image, then lets Windows scale that image. This makes downscaling cheaper
-while preserving the original colors and nearest-neighbor sampling. Both editions
-use this path, and you can keep your chosen window size.
+- **Clearer code.** Descriptive callback and API parameter names, named bootstrap
+  roles, and notes explaining ownership, lifetimes and runtime contracts.
+- **Less duplication.** Removed unused helpers and includes, consolidated shared
+  frame setup and build source lists, and clarified the PE inspection tool.
+- **Better navigation.** Expanded repository and tool maps, refreshed contributor
+  and integration guides, and clearly labeled superseded design records.
 
-Measured **process CPU milliseconds per frame**, including capture, conversion
-and presentation; lower is better:
+The cleanup passed **90 native regression checks** across both editions in
+Release and Debug, along with formatting, documentation-link and package checks.
+**Existing clients do not need a DLL update for this cleanup.**
 
-| Game area | Previous standard | New standard | New X |
-| --- | ---: | ---: | ---: |
-| 640×480 | 2.34 | 1.60 | 1.45 |
-| 639×479 | 25.78 | **2.46** | **2.38** |
-| 636×477 | 24.34 | **2.46** | **2.27** |
-| 641×481 | 2.38 | 1.60 | 1.60 |
-| 800×600 | 2.42 | 1.91 | 2.03 |
-| 960×720 | 2.54 | 1.37 | 2.03 |
-
-The reproduced 639×479 case uses **about 90% less CPU per frame** after the
-change. These are local synthetic benchmarks of the actual packaged DLLs, with
-two 200-frame measured passes per size. They are not FPS measurements or a
-promise of the same CPU percentages in every live game session.
-
-All 65,536 RGB565 colors and output sampling were checked against Windows'
-previous output at six sizes. **90 local checks passed** across standard/X and
-Release/Debug, including cursor composition and rendering recovery. The reusable
-buffer adds about **1.17 MiB per window**.
-[Full measurements, package hashes and validation scope →](docs/scaling-validation.md)
+[Explore the code and tool maps →](docs/architecture.md) · [Contributor guide →](CONTRIBUTING.md)
 
 ## Get started
 
