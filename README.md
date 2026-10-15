@@ -33,10 +33,11 @@ Windows system components. No proxy DLL, configuration files or extra runtime.
 
 | Edition | What you get |
 | --- | --- |
-| **DAWindower**<br>`DAWindower.dll` | Black gradient title bar with the game's title and minimize, maximize/restore and close controls. |
+| **DAWindower**<br>`DAWindower.dll` | Black gradient title bar with **Dark Ages · CharacterName** and minimize, maximize/restore and close controls. |
 | **DAWindower X**<br>`DAWindowerX.dll` | Black gradient title bar, character name, **+** New client, **1:1** native-size reset and button tooltips. |
 
 Same renderer and recovery. Choose **one edition per client**.
+Both editions show `Dark Ages` when no supported character name is available.
 [X controls and supported clients →](docs/x-edition.md)
 
 ## Why we changed resized rendering

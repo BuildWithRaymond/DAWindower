@@ -17,7 +17,7 @@
       "name": "windows-x86-x",
       "inherits": "windows-x86",
       "displayName": "DAWindower X · Windows x86",
-      "description": "Character titles and extra client controls; still one standalone DLL.",
+      "description": "Extra client controls; still one standalone DLL.",
       "binaryDir": "${sourceDir}/build/windows-x86-x",
       "installDir": "${sourceDir}/dist/local-x",
       "cacheVariables": { "DAW_BUILD_X": true }

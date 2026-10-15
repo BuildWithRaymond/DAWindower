@@ -10,8 +10,9 @@ changes do not imply a newly tested retail release.
   color conversion, nearest-neighbor sampling and the game's RGB565 cursor canvas.
 - Share X's caption renderer with the standard edition: charcoal-to-black
   shading, game icon, three window buttons and high-contrast support. Standard
-  preserves the host's title; character names and extra client actions remain
-  X-only. Both editions own the full caption with native caption painting disabled.
+  now shares X's `Dark Ages · CharacterName` title and once-per-second name
+  updates, with `Dark Ages` as the fallback. Extra client actions remain X-only.
+  Both editions own the full caption with native caption painting disabled.
 - Restore the game's first executable icon in both editions, matching dawnd's
   visible icon behavior. Preserve launcher/class icons; the shared caption paints
   the icon and exposes the native system menu there. No icon asset is distributed.

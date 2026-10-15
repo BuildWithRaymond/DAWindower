@@ -31,9 +31,9 @@ when CTest is invoked with parallel execution.
 | `fullscreen_after_attach_contract` | Same borderless test | Later native launcher style/bounds bypass windowed aspect constraints and X chrome. |
 | `client_geometry_gate_contract` | Same borderless test | Client import resets cannot undo placement; native launcher calls, user data, unrelated windows and hide/minimize/restore pass through. |
 | `window_icon_contract` | [window_icon_tests.cpp](../tests/window_icon_tests.cpp) | First EXE icon matches native ExtractIconA; both icon slots, shared caption pixels/system-menu hit, launcher/class ownership, reentrant host destruction and repeated-window USER-handle lifetime. |
-| `standard_titlebar_contract` (standard only) | [titlebar_tests.cpp](../tests/titlebar_tests.cpp) | Shared gradient with native caption rendering disabled, three button tooltips, click cancellation, minimize/maximize/restore/close, host-owned title and no X-only actions. |
-| `x_name_contract` | [x_name_tests.cpp](../tests/x_name_tests.cpp) | Bounded decoding, rejected executable layouts and unknown-host fallback; no desktop required. |
-| `x_titlebar_contract` (X only) | [titlebar_tests.cpp](../tests/titlebar_tests.cpp) | Shared gradient, all five delayed native tooltip descriptions/dismissal, cursor ownership, cancelled clicks, native reset, independent windows and GDI cleanup. |
+| `standard_titlebar_contract` (standard only) | [titlebar_tests.cpp](../tests/titlebar_tests.cpp) | Shared gradient with native caption rendering disabled, three button tooltips, click cancellation, minimize/maximize/restore/close, Dark Ages fallback/title refresh and no X-only actions. |
+| `character_name_contract` | [character_name_tests.cpp](../tests/character_name_tests.cpp) | Shared bounded decoding, rejected executable layouts and unknown-host fallback; no desktop required. |
+| `x_titlebar_contract` (X only) | [titlebar_tests.cpp](../tests/titlebar_tests.cpp) | Shared gradient and title refresh, all five delayed native tooltip descriptions/dismissal, cursor ownership, cancelled clicks, native reset, independent windows and GDI cleanup. |
 | `x_launch_contract` (X only) | [x_launch_tests.cpp](../tests/x_launch_tests.cpp), [fixture](../tests/x_launch_fixture.cpp) | Real suspended synthetic child, Unicode paths, injection ordering, UI button/worker wiring and failed-child cleanup. |
 
 The test called `retail_render_contract` is synthetic. Only the separate helper

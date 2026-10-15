@@ -16,7 +16,7 @@ endif()
 
 include(CTest)
 option(DAW_BUILD_PROXY_TESTS "Build the legacy development-only proxy comparison" OFF)
-option(DAW_BUILD_X "Build DAWindower X with character titles and extra client controls" OFF)
+option(DAW_BUILD_X "Build DAWindower X with extra client controls" OFF)
 set(DAW_SYSTEM_LIBRARIES dxguid user32 gdi32 comctl32 wtsapi32 dwmapi uxtheme msimg32)
 set(DAW_DLL_NAME DAWindower)
 set(DAW_EXPORTS src/DAWindower.def)
@@ -41,9 +41,10 @@ set(DAW_GRAPHICS
   src/window/icon.cpp
   src/window/frame.cpp
   src/window/caption.cpp
+  src/window/name.cpp
   src/window/sizing.cpp)
 if(DAW_BUILD_X)
-  set(DAW_X_SOURCES src/x/name.cpp src/x/launch.cpp)
+  set(DAW_X_SOURCES src/x/launch.cpp)
   list(APPEND DAW_GRAPHICS ${DAW_X_SOURCES})
 endif()
 set(DAW_SOURCES
@@ -83,6 +84,7 @@ if(BUILD_TESTING)
     src/window/icon.cpp
     src/window/frame.cpp
     src/window/caption.cpp
+    src/window/name.cpp
     src/window/sizing.cpp
     src/graphics/gdi.cpp
     src/compatibility/imports.cpp)
@@ -146,10 +148,10 @@ if(BUILD_TESTING)
     set_tests_properties(standard_titlebar_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
   endif()
 
-  add_executable(x_name_tests tests/x_name_tests.cpp src/x/name.cpp)
-  target_include_directories(x_name_tests PRIVATE src)
-  add_test(NAME x_name_contract COMMAND x_name_tests)
-  set_tests_properties(x_name_contract PROPERTIES LABELS "unit")
+  add_executable(character_name_tests tests/character_name_tests.cpp src/window/name.cpp)
+  target_include_directories(character_name_tests PRIVATE src)
+  add_test(NAME character_name_contract COMMAND character_name_tests)
+  set_tests_properties(character_name_contract PROPERTIES LABELS "unit")
   if(DAW_BUILD_X)
     add_executable(x_launch_fixture tests/x_launch_fixture.cpp)
     target_include_directories(x_launch_fixture PRIVATE include)

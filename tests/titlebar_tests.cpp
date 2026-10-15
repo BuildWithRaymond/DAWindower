@@ -194,13 +194,18 @@ int main(int argc, char** argv) {
           "Windows caption rendering is disabled beneath the shared gradient");
     wchar_t title[256]{};
     GetWindowTextW(windows[0], title, 256);
-#ifdef DAW_X
     check(std::wcscmp(title, L"Dark Ages") == 0,
-          "X title safely falls back for an unknown executable");
-#else
-    check(std::wcscmp(title, L"Original client title") == 0,
-          "standard caption preserves the host title");
-#endif
+          "shared title safely falls back for an unknown executable");
+    SetWindowTextW(windows[0], L"Updated client title");
+    const auto titleDeadline = GetTickCount64() + 2000;
+    do {
+        pump();
+        GetWindowTextW(windows[0], title, 256);
+    } while (std::wcscmp(title, L"Dark Ages") != 0 && GetTickCount64() < titleDeadline);
+    check(std::wcscmp(title, L"Dark Ages") == 0,
+          "shared title timer restores fallback after a host title change");
+    GetWindowTextW(windows[1], title, 256);
+    check(std::wcscmp(title, L"Dark Ages") == 0, "each client maintains its own Dark Ages title");
     auto center = button(windows[0], 2);
     center.x -= 160;
     HIGHCONTRASTW contrast{sizeof(contrast)};
@@ -301,10 +306,6 @@ int main(int argc, char** argv) {
     GetClientRect(windows[0], &restored);
     check(!IsIconic(windows[0]) && restored.right == 901 && restored.bottom == 676,
           "standard restores exact game dimensions after minimize");
-    SetWindowTextW(windows[0], L"Updated client title");
-    GetWindowTextW(windows[0], title, 256);
-    check(std::wcscmp(title, L"Updated client title") == 0,
-          "standard title remains host-controlled");
     const auto close = button(windows[1], 0);
     press(windows[1], close);
     release(windows[1], close);

@@ -2,9 +2,9 @@
 
 X adds window controls to DAWindower's existing renderer. It is an optional
 edition, distributed as **one `DAWindowerX.dll`**, with Windows system dependencies
-only. Use one edition per client. Both editions share the gradient caption renderer
-and loading contract. Standard `DAWindower.dll` keeps the host's title and three
-ordinary window controls; X adds character titles and two client actions.
+only. Use one edition per client. Both editions share the gradient caption renderer,
+`Dark Ages · CharacterName` title and loading contract. Standard `DAWindower.dll`
+has three ordinary window controls; X adds two client actions.
 
 [![Actual DAWindower X client with a black gradient title bar, New client and native-size controls](images/x-native.png)](images/x-native.png)
 
@@ -50,7 +50,7 @@ system-loader route tested by the development fixtures.
 
 ## Character title and client support
 
-The character title uses bounded, read-only sampling once per second. It never
+Both editions' character title uses bounded, read-only sampling once per second. It never
 hooks networking or writes client state. Unknown clients, unavailable buffers
 and invalid names display `Dark Ages`.
 
@@ -94,12 +94,13 @@ none is distributed.
 
 - [Shared caption](../src/window/caption.cpp): non-client painting, hit regions, UI lifetime,
   tooltip/menu actions and asynchronous launch ownership.
-- [Name reader](../src/x/name.cpp): client layout guard, bounded copies and name validation.
+- [Shared name reader](../src/window/name.cpp): client layout guard, bounded copies and name validation.
 - [Launch transaction](../src/x/launch.cpp): suspended child, injection, resume and failure cleanup.
 - [Approved design](designs/2026-10-14-dawindower-x.md): scope and implementation sequence.
 
 The existing rendering, recovery, cursor and resizing contracts run for both
-editions. X adds frame, name-boundary and synthetic child-launch contracts. A
+editions, including caption and name-boundary contracts. X adds extra frame controls
+and synthetic child-launch contracts. A
 synthetic fixture proves injection ordering and UI wiring, not retail gameplay
 or successful-login timing. The user confirmed login-name display, native reset,
 New client and normal graphics/input on the initial X prototype. Later actual

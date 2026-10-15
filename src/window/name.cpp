@@ -2,7 +2,7 @@
 #include <cstring>
 #include <cwchar>
 
-namespace daw::x {
+namespace daw {
 namespace {
 constexpr DWORD nameRva = 0x33d910, versionRva = 0x3505b8;
 
@@ -71,4 +71,4 @@ bool CharacterName::read(wchar_t (&name)[13]) const noexcept {
            readMemory(image + nameRva, second, sizeof(second)) &&
            std::memcmp(first, second, sizeof(first)) == 0 && decodeName(first, sizeof(first), name);
 }
-} // namespace daw::x
+} // namespace daw

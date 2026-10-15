@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <cstddef>
 
-namespace daw::x {
+namespace daw {
 struct ClientIdentity {
     DWORD timestamp, imageSize, entryRva;
 };
@@ -17,4 +17,4 @@ class CharacterName {
     CharacterName() noexcept;
     bool read(wchar_t (&name)[13]) const noexcept;
 };
-} // namespace daw::x
+} // namespace daw

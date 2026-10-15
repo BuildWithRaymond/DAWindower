@@ -1,6 +1,6 @@
 #include "caption.h"
+#include "window/name.h"
 #ifdef DAW_X
-#include "x/name.h"
 #include "x/launch.h"
 #endif
 #include "runtime.h"
@@ -19,7 +19,6 @@
 namespace daw {
 namespace {
 #ifdef DAW_X
-using x::CharacterName;
 using x::currentClientPaths;
 using x::launchClient;
 using x::LaunchResult;
@@ -141,8 +140,8 @@ class Frame {
     HWND tooltip = nullptr;
     UINT_PTR hoverTimer = 0;
     UINT_PTR clockTimer = 0;
-#ifdef DAW_X
     CharacterName characterName;
+#ifdef DAW_X
     std::shared_ptr<LaunchStatus> launch;
     wchar_t launchError[256]{};
 #endif
@@ -185,8 +184,8 @@ class Frame {
         refreshing = false;
     }
 
-#ifdef DAW_X
     void updateTitle() {
+#ifdef DAW_X
         if (launch && launch->complete.load(std::memory_order_acquire)) {
             const auto result = launch->result;
             launch.reset();
@@ -200,6 +199,7 @@ class Frame {
             EnableMenuItem(GetSystemMenu(window, FALSE), newCommand, MF_BYCOMMAND | MF_ENABLED);
             paint();
         }
+#endif
         wchar_t character[13]{}, next[256]{};
         if (characterName.read(character))
             swprintf_s(next, L"Dark Ages \u00b7 %s", character);
@@ -208,7 +208,6 @@ class Frame {
         if (std::wcscmp(next, title) != 0)
             SetWindowTextW(window, next);
     }
-#endif
 
     void paint(HDC supplied = nullptr) {
         if (destroyed || IsIconic(window) || !windowedFrame(window))
@@ -608,12 +607,10 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
         f->showTip();
         return 0;
     }
-#ifdef DAW_X
     if (m == WM_TIMER && a == f->clockTimer && f->clockTimer) {
         f->updateTitle();
         return 0;
     }
-#endif
     if (m == WM_SETTEXT && b && reinterpret_cast<const wchar_t*>(b) != f->title)
         wcsncpy_s(f->title, reinterpret_cast<const wchar_t*>(b), _TRUNCATE);
     const auto result = DefSubclassProc(w, m, a, b);
@@ -645,11 +642,6 @@ bool attachCaption(HWND window) {
         return false;
     }
     Call keep(f);
-#ifndef DAW_X
-    GetWindowTextW(window, f->title, 256);
-    if (f->destroyed)
-        return false;
-#endif
     RECT original{};
     GetClientRect(window, &original);
     f->refreshStyle();
@@ -704,10 +696,8 @@ bool attachCaption(HWND window) {
         }
     }
     SetWindowTextW(window, f->title);
-#ifdef DAW_X
     if (!f->destroyed)
         f->clockTimer = SetTimer(window, frameId + 2, 1000, nullptr);
-#endif
     return !f->destroyed;
 }
 } // namespace daw
