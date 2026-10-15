@@ -31,20 +31,6 @@ void flushClient(HWND w, int caption = 0) {
     GetClientRect(w, &c);
     POINT p{};
     ClientToScreen(w, &p);
-#ifndef DAW_X
-    if (caption) {
-        RECT visible{};
-        check(SUCCEEDED(
-                  DwmGetWindowAttribute(w, DWMWA_EXTENDED_FRAME_BOUNDS, &visible, sizeof(visible))),
-              "native visible frame bounds");
-        check(p.x - visible.left >= 0 && p.x - visible.left <= 1 &&
-                  visible.right - p.x - c.right >= 0 && visible.right - p.x - c.right <= 1 &&
-                  visible.bottom - p.y - c.bottom >= 0 && visible.bottom - p.y - c.bottom <= 1 &&
-                  p.y == r.top + caption,
-              "native caption keeps invisible margins without a thick visible frame");
-        return;
-    }
-#endif
     check(p.x == r.left && p.y == r.top + caption && c.right == r.right - r.left &&
               c.bottom + caption == r.bottom - r.top,
           "no visible outer frame or unused client margin");
@@ -196,19 +182,9 @@ int main(int argc, char** argv) {
     } else {
         check((GetWindowLongW(w, GWL_STYLE) & WS_THICKFRAME) != 0,
               "ordinary borderless window remains resizable");
-#ifdef DAW_X
         const int caption = MulDiv(36, GetDpiForWindow(w), 96);
-#else
-        check((GetWindowLongW(w, GWL_STYLE) & WS_CAPTION) == WS_CAPTION,
-              "normal edition retains its native Windows title bar");
-        RECT native{};
-        AdjustWindowRectExForDpi(&native,
-                                 GetWindowLongW(w, GWL_STYLE),
-                                 FALSE,
-                                 GetWindowLongW(w, GWL_EXSTYLE),
-                                 GetDpiForWindow(w));
-        const int caption = -native.top;
-#endif
+        check((GetWindowLongW(w, GWL_STYLE) & WS_CAPTION) == 0,
+              "both editions use the shared caption without a native title bar underneath");
         flushClient(w, caption);
         const auto r = outer(w);
         RECT beforeClient{};
@@ -243,7 +219,7 @@ int main(int argc, char** argv) {
             check(SendMessageW(
                       w, WM_NCHITTEST, 0, MAKELPARAM(visibleEdges[i].x, visibleEdges[i].y)) ==
                       visibleHits[i],
-                  "resize grips reach the visible game edges beyond invisible native margins");
+                  "resize grips reach the visible game edges");
 #endif
         SetWindowPos(w,
                      nullptr,

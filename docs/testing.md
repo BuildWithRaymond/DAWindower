@@ -25,14 +25,14 @@ when CTest is invoked with parallel execution.
 | `gdi_render_loadlibrary_contract` | Same GDI test | The same GDI path through LoadLibrary-only loading. |
 | `native_aspect_resize_contract` | [resize_tests.cpp](../tests/resize_tests.cpp) | Coupled nearest-pixel sizes, all eight anchored drag directions, host messages and mouse mapping. |
 | `resize_cursor_contract` | [resize_cursor_tests.cpp](../tests/resize_cursor_tests.cpp) | Eight arrow shapes, visibility count balance, repeated hover, drag and cleanup. |
-| `borderless_window_contract` | [borderless_tests.cpp](../tests/borderless_tests.cpp) | Native/custom draggable title bars, standard invisible frame margins, eight resize regions and 4:3 sizing. |
+| `borderless_window_contract` | [borderless_tests.cpp](../tests/borderless_tests.cpp) | Shared draggable caption, game pixels flush with both sides/bottom, eight resize regions and 4:3 sizing. |
 | `fullscreen_before_attach_contract` | Same borderless test | Completed launcher popup/maximized bounds survive renderer attachment. |
 | `fullscreen_after_attach_contract` | Same borderless test | Later native launcher style/bounds bypass windowed aspect constraints and X chrome. |
 | `client_geometry_gate_contract` | Same borderless test | Client import resets cannot undo placement; native launcher calls, user data, unrelated windows and hide/minimize/restore pass through. |
-| `window_icon_contract` | [window_icon_tests.cpp](../tests/window_icon_tests.cpp) | First EXE icon matches native ExtractIconA; both icon slots, X caption pixels/system-menu hit, launcher/class ownership, reentrant host destruction and repeated-window USER-handle lifetime. |
-| `native_caption_spacing_contract` (standard only) | [window_icon_tests.cpp](../tests/window_icon_tests.cpp) | Composed desktop icon inset, native system-menu hit target, caption updates and absence of thick visible side frames. |
+| `window_icon_contract` | [window_icon_tests.cpp](../tests/window_icon_tests.cpp) | First EXE icon matches native ExtractIconA; both icon slots, shared caption pixels/system-menu hit, launcher/class ownership, reentrant host destruction and repeated-window USER-handle lifetime. |
+| `standard_titlebar_contract` (standard only) | [titlebar_tests.cpp](../tests/titlebar_tests.cpp) | Shared gradient with native caption rendering disabled, three button tooltips, click cancellation, minimize/maximize/restore/close, host-owned title and no X-only actions. |
 | `x_name_contract` | [x_name_tests.cpp](../tests/x_name_tests.cpp) | Bounded decoding, rejected executable layouts and unknown-host fallback; no desktop required. |
-| `x_titlebar_contract` (X only) | [x_titlebar_tests.cpp](../tests/x_titlebar_tests.cpp) | Gradient caption, all five delayed native tooltip descriptions/dismissal, cursor ownership, cancelled clicks, native reset, independent windows and GDI cleanup. |
+| `x_titlebar_contract` (X only) | [titlebar_tests.cpp](../tests/titlebar_tests.cpp) | Shared gradient, all five delayed native tooltip descriptions/dismissal, cursor ownership, cancelled clicks, native reset, independent windows and GDI cleanup. |
 | `x_launch_contract` (X only) | [x_launch_tests.cpp](../tests/x_launch_tests.cpp), [fixture](../tests/x_launch_fixture.cpp) | Real suspended synthetic child, Unicode paths, injection ordering, UI button/worker wiring and failed-child cleanup. |
 
 The test called `retail_render_contract` is synthetic. Only the separate helper

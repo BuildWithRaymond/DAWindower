@@ -2,6 +2,7 @@
 #include <windowsx.h>
 #include <ddraw.h>
 #include <commctrl.h>
+#include <dwmapi.h>
 #include "dawindower.h"
 #include "window_size.h"
 #include <cstdio>
@@ -74,6 +75,16 @@ void release(HWND w, POINT screen) {
         w, WM_LBUTTONUP, 0, MAKELPARAM(static_cast<SHORT>(screen.x), static_cast<SHORT>(screen.y)));
 }
 
+void pump() {
+    const auto until = GetTickCount64() + 100;
+    do {
+        MSG message{};
+        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+            DispatchMessageW(&message);
+        MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
+    } while (GetTickCount64() < until);
+}
+
 COLORREF framePixel(HWND w, POINT screen) {
     RECT r{};
     GetWindowRect(w, &r);
@@ -128,7 +139,7 @@ void tooltipText(HWND window, HWND tooltip, int fromRight, const wchar_t* expect
 } // namespace
 
 int main(int argc, char** argv) {
-    const char* dll = argc > 1 ? argv[1] : "DAWindower.dll";
+    const char* dll = argc > 1 ? argv[1] : DAW_TEST_DLL_A;
     auto module = LoadLibraryA(dll);
     check(module != nullptr, "LoadLibrary-only initialization");
     WNDCLASSW c{};
@@ -156,11 +167,13 @@ int main(int argc, char** argv) {
     }
     TooltipSearch tooltip{windows[0]};
     EnumThreadWindows(GetCurrentThreadId(), findTooltip, reinterpret_cast<LPARAM>(&tooltip));
-    check(tooltip.found != nullptr, "X registers and creates its own native tooltip control");
+    check(tooltip.found != nullptr, "shared caption creates its own native tooltip control");
     check(SendMessageW(tooltip.found, TTM_GETTOOLCOUNT, 0, 0) == 1,
           "X tooltip has a registered tracking tool");
+#ifdef DAW_X
     tooltipText(windows[0], tooltip.found, 4, L"Open another Dark Ages client");
     tooltipText(windows[0], tooltip.found, 3, L"Reset to native size (640 \u00d7 480)");
+#endif
     tooltipText(windows[0], tooltip.found, 2, L"Minimize");
     tooltipText(windows[0], tooltip.found, 1, L"Maximize");
     tooltipText(windows[0], tooltip.found, 0, L"Close");
@@ -172,10 +185,22 @@ int main(int argc, char** argv) {
     check(origin.x == outer.left && origin.y + client.bottom == outer.bottom &&
               client.right == outer.right - outer.left,
           "game client reaches both sides and bottom without an outer border");
+    check((GetWindowLongW(windows[0], GWL_STYLE) & WS_CAPTION) == 0,
+          "shared frame owns caption layout without a native caption underneath");
+    BOOL nativeRendering = TRUE;
+    check(SUCCEEDED(DwmGetWindowAttribute(
+              windows[0], DWMWA_NCRENDERING_ENABLED, &nativeRendering, sizeof(nativeRendering))) &&
+              !nativeRendering,
+          "Windows caption rendering is disabled beneath the shared gradient");
     wchar_t title[256]{};
     GetWindowTextW(windows[0], title, 256);
+#ifdef DAW_X
     check(std::wcscmp(title, L"Dark Ages") == 0,
           "X title safely falls back for an unknown executable");
+#else
+    check(std::wcscmp(title, L"Original client title") == 0,
+          "standard caption preserves the host title");
+#endif
     auto center = button(windows[0], 2);
     center.x -= 160;
     HIGHCONTRASTW contrast{sizeof(contrast)};
@@ -215,6 +240,7 @@ int main(int argc, char** argv) {
     while (cursorCount() < initialCursorCount)
         ShowCursor(TRUE);
 
+#ifdef DAW_X
     resize(windows[0], 901, 676);
     resize(windows[1], 733, 550);
     auto native = button(windows[0], 3);
@@ -242,6 +268,50 @@ int main(int argc, char** argv) {
     GetClientRect(windows[0], &r);
     check(!IsZoomed(windows[0]) && r.right == 640 && r.bottom == 480,
           "native action restores maximized window before measuring exact client size");
+#else
+    resize(windows[0], 901, 676);
+    auto maximize = button(windows[0], 1);
+    press(windows[0], maximize);
+    check(GetCapture() == windows[0], "standard title button captures press");
+    SendMessageW(windows[0], WM_CANCELMODE, 0, 0);
+    check(GetCapture() != windows[0] && !IsZoomed(windows[0]),
+          "cancelled standard click releases capture without maximizing");
+    press(windows[0], maximize);
+    POINT elsewhere{100, 100};
+    ClientToScreen(windows[0], &elsewhere);
+    release(windows[0], elsewhere);
+    check(!IsZoomed(windows[0]), "releasing outside standard button cancels action");
+    press(windows[0], maximize);
+    release(windows[0], maximize);
+    pump();
+    check(IsZoomed(windows[0]) != FALSE, "standard maximize button works");
+    maximize = button(windows[0], 1);
+    press(windows[0], maximize);
+    release(windows[0], maximize);
+    pump();
+    check(!IsZoomed(windows[0]), "standard maximize button restores window");
+    const auto minimize = button(windows[0], 2);
+    press(windows[0], minimize);
+    release(windows[0], minimize);
+    pump();
+    check(IsIconic(windows[0]) != FALSE, "standard minimize button works");
+    nativeShowWindow(windows[0], SW_RESTORE);
+    pump();
+    RECT restored{};
+    GetClientRect(windows[0], &restored);
+    check(!IsIconic(windows[0]) && restored.right == 901 && restored.bottom == 676,
+          "standard restores exact game dimensions after minimize");
+    SetWindowTextW(windows[0], L"Updated client title");
+    GetWindowTextW(windows[0], title, 256);
+    check(std::wcscmp(title, L"Updated client title") == 0,
+          "standard title remains host-controlled");
+    const auto close = button(windows[1], 0);
+    press(windows[1], close);
+    release(windows[1], close);
+    pump();
+    check(!IsWindow(windows[1]) && IsWindow(windows[0]),
+          "standard close button affects only its own client");
+#endif
 
     const auto before = GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS);
     for (int i = 0; i < 100; ++i)
@@ -250,7 +320,13 @@ int main(int argc, char** argv) {
           "repeated frame paint releases temporary GDI objects");
 
     auto menu = GetSystemMenu(windows[0], FALSE);
+#ifdef DAW_X
     check(GetMenuItemCount(menu) >= 9, "extra actions available in Windows system menu");
+#else
+    check(GetMenuState(menu, 0xe810, MF_BYCOMMAND) == static_cast<UINT>(-1) &&
+              GetMenuState(menu, 0xe820, MF_BYCOMMAND) == static_cast<UINT>(-1),
+          "standard edition has no X-only client or native-size actions");
+#endif
     for (int i = 0; i < 2; ++i) {
         DestroyWindow(windows[i]);
         draws[i]->Release();
@@ -258,5 +334,5 @@ int main(int argc, char** argv) {
     auto stop = reinterpret_cast<DAWindowerEntry>(GetProcAddress(module, "DAWindowerShutdown"));
     check(stop && stop(nullptr) == ERROR_SUCCESS, "shutdown after frame destruction");
     FreeLibrary(module);
-    std::puts("X frame contract passed.");
+    std::puts("Shared caption contract passed.");
 }

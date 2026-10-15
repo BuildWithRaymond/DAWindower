@@ -7,7 +7,10 @@ from pathlib import Path
 
 from inspect_pe import PE32
 
-SYSTEM_DLLS = {"kernel32.dll", "user32.dll", "gdi32.dll", "comctl32.dll", "wtsapi32.dll", "dwmapi.dll"}
+SYSTEM_DLLS = {
+    "kernel32.dll", "user32.dll", "gdi32.dll", "comctl32.dll", "wtsapi32.dll",
+    "dwmapi.dll", "uxtheme.dll", "msimg32.dll",
+}
 EXPORTS = {"DAWindowerInitialize", "DAWindowerShutdown", "DAWindowerGetStats"}
 
 
@@ -32,8 +35,7 @@ def main():
         parser.error("DAWindower must be a native x86 (i386) DLL")
     if not pe.characteristics & 0x2000:  # IMAGE_FILE_DLL in the COFF header.
         parser.error("PE image is not marked as a DLL")
-    system_dlls = SYSTEM_DLLS | ({"dwmapi.dll", "uxtheme.dll", "msimg32.dll"} if args.edition == "x" else set())
-    unexpected = dependencies - system_dlls
+    unexpected = dependencies - SYSTEM_DLLS
     if unexpected:
         parser.error(f"noncontract imports: {', '.join(sorted(unexpected))}")
     if exports != EXPORTS:

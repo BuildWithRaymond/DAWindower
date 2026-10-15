@@ -16,15 +16,14 @@ endif()
 
 include(CTest)
 option(DAW_BUILD_PROXY_TESTS "Build the legacy development-only proxy comparison" OFF)
-option(DAW_BUILD_X "Build DAWindower X with its optional title bar and client controls" OFF)
-set(DAW_SYSTEM_LIBRARIES dxguid user32 gdi32 comctl32 wtsapi32 dwmapi)
+option(DAW_BUILD_X "Build DAWindower X with character titles and extra client controls" OFF)
+set(DAW_SYSTEM_LIBRARIES dxguid user32 gdi32 comctl32 wtsapi32 dwmapi uxtheme msimg32)
 set(DAW_DLL_NAME DAWindower)
 set(DAW_EXPORTS src/DAWindower.def)
 if(DAW_BUILD_X)
   set(DAW_DLL_NAME DAWindowerX)
   set(DAW_EXPORTS src/x/DAWindowerX.def)
   add_compile_definitions(DAW_X)
-  list(APPEND DAW_SYSTEM_LIBRARIES uxtheme msimg32)
   if(DAW_BUILD_PROXY_TESTS)
     message(FATAL_ERROR "X does not support the historical development-only proxy target.")
   endif()
@@ -41,9 +40,10 @@ set(DAW_GRAPHICS
   src/window/window.cpp
   src/window/icon.cpp
   src/window/frame.cpp
+  src/window/caption.cpp
   src/window/sizing.cpp)
 if(DAW_BUILD_X)
-  set(DAW_X_SOURCES src/x/frame.cpp src/x/name.cpp src/x/launch.cpp)
+  set(DAW_X_SOURCES src/x/name.cpp src/x/launch.cpp)
   list(APPEND DAW_GRAPHICS ${DAW_X_SOURCES})
 endif()
 set(DAW_SOURCES
@@ -82,6 +82,7 @@ if(BUILD_TESTING)
     src/window/window.cpp
     src/window/icon.cpp
     src/window/frame.cpp
+    src/window/caption.cpp
     src/window/sizing.cpp
     src/graphics/gdi.cpp
     src/compatibility/imports.cpp)
@@ -135,9 +136,13 @@ if(BUILD_TESTING)
   add_dependencies(window_icon_tests DAWindower)
   add_test(NAME window_icon_contract COMMAND window_icon_tests)
   set_tests_properties(window_icon_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
+  add_executable(titlebar_tests tests/titlebar_tests.cpp)
+  target_include_directories(titlebar_tests PRIVATE include)
+  target_link_libraries(titlebar_tests PRIVATE ddraw dxguid user32 gdi32 dwmapi)
+  add_dependencies(titlebar_tests DAWindower)
   if(NOT DAW_BUILD_X)
-    add_test(NAME native_caption_spacing_contract COMMAND window_icon_tests --caption)
-    set_tests_properties(native_caption_spacing_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
+    add_test(NAME standard_titlebar_contract COMMAND titlebar_tests "${DAW_DLL_NAME}.dll")
+    set_tests_properties(standard_titlebar_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
   endif()
 
   add_executable(x_name_tests tests/x_name_tests.cpp src/x/name.cpp)
@@ -145,10 +150,6 @@ if(BUILD_TESTING)
   add_test(NAME x_name_contract COMMAND x_name_tests)
   set_tests_properties(x_name_contract PROPERTIES LABELS "unit")
   if(DAW_BUILD_X)
-    add_executable(x_titlebar_tests tests/x_titlebar_tests.cpp)
-    target_include_directories(x_titlebar_tests PRIVATE include)
-    target_link_libraries(x_titlebar_tests PRIVATE ddraw dxguid user32 gdi32)
-    add_dependencies(x_titlebar_tests DAWindower)
     add_executable(x_launch_fixture tests/x_launch_fixture.cpp)
     target_include_directories(x_launch_fixture PRIVATE include)
     target_link_libraries(x_launch_fixture PRIVATE ddraw dxguid user32)
@@ -157,7 +158,7 @@ if(BUILD_TESTING)
     add_dependencies(x_launch_tests DAWindower x_launch_fixture)
     add_test(NAME x_launch_contract COMMAND x_launch_tests)
     set_tests_properties(x_launch_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
-    add_test(NAME x_titlebar_contract COMMAND x_titlebar_tests "${DAW_DLL_NAME}.dll")
+    add_test(NAME x_titlebar_contract COMMAND titlebar_tests "${DAW_DLL_NAME}.dll")
     set_tests_properties(x_titlebar_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
   endif()
 

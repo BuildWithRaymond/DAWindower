@@ -2,6 +2,7 @@
 #include "sizing.h"
 #include "frame.h"
 #include "icon.h"
+#include "caption.h"
 #include "runtime.h"
 #include "graphics/gdi.h"
 #include <commctrl.h>
@@ -10,9 +11,6 @@
 #include <cstring>
 #include <new>
 #include <wtsapi32.h>
-#ifdef DAW_X
-#include "x/frame.h"
-#endif
 
 namespace daw {
 namespace {
@@ -189,30 +187,9 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
         DefSubclassProc(w, m, a, b);
         if (retained->hwnd.load() == w) {
             *r = requested;
-#ifndef DAW_X
-            const auto inset = nativeFrameInsets(w);
-            r->left += inset.left;
-            r->right -= inset.right;
-            r->top = std::min(r->bottom, r->top + inset.top);
-            r->bottom = std::max(r->top, r->bottom - inset.bottom);
-#endif
         }
-        return 0; // X owns its caption; standard retains native caption layout.
+        return 0; // The shared caption subclass reserves its own strip.
     }
-#ifndef DAW_X
-    if (m == WM_NCHITTEST) {
-        const auto hit = resizeHit(w, {GET_X_LPARAM(b), GET_Y_LPARAM(b)});
-        if (hit != HTCLIENT)
-            return hit;
-        // Keep native title-bar buttons, dragging and the system menu. Native
-        // side/bottom frame hits outside our invisible grips belong to pixels.
-        const auto native = DefSubclassProc(w, m, a, b);
-        return native == HTCAPTION || native == HTSYSMENU || native == HTMINBUTTON ||
-                       native == HTMAXBUTTON || native == HTCLOSE
-                   ? native
-                   : HTCLIENT;
-    }
-#endif
     if (m == WM_SETCURSOR && reinterpret_cast<HWND>(a) == w) {
         auto& cursor = owner->cursor;
         auto shape =
@@ -359,28 +336,18 @@ HRESULT attachWindow(const std::shared_ptr<WindowState>& state, HWND w) {
     GetClientRect(w, &client);
     auto style = GetWindowLongW(w, GWL_STYLE);
     const bool fullscreen = fullscreenBeforeAttach(w);
-#ifdef DAW_X
     const auto newStyle = (style & ~WS_CAPTION) | WS_POPUP | WS_THICKFRAME | WS_SYSMENU |
                           WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-#else
-    const auto newStyle = (style & ~WS_POPUP) | WS_OVERLAPPEDWINDOW;
-#endif
     RECT outer{0,
                0,
                client.right > 0 ? client.right : gameWidth,
                client.bottom > 0 ? client.bottom : gameHeight};
-    // Keep a caption in both editions. Standard also retains the invisible
-    // native frame margins needed for Windows' caption-content placement.
+    // Both editions use the shared caption without native frame margins.
     // A launcher that already maximized a bare popup owns its bounds and style.
     SetLastError(0);
     const auto oldStyle = fullscreen ? style : SetWindowLongW(w, GWL_STYLE, newStyle);
     if (owner->destroyed || (!oldStyle && GetLastError()))
         return fail();
-#ifndef DAW_X
-    const auto inset = nativeFrameInsets(w);
-    outer.right += inset.left + inset.right;
-    outer.bottom += inset.top + inset.bottom;
-#endif
     if (!SetWindowPos(w,
                       nullptr,
                       0,
@@ -409,12 +376,10 @@ HRESULT attachWindow(const std::shared_ptr<WindowState>& state, HWND w) {
     // The desktop watchdog also works when session notification registration is
     // unavailable, and detects secure desktop changes for background windows.
     WTSRegisterSessionNotification(w, NOTIFY_FOR_THIS_SESSION);
-#ifdef DAW_X
-    if (!x::attachFrame(w))
-        log(L"X frame attachment failed");
+    if (!attachCaption(w))
+        log(L"Caption attachment failed");
     if (owner->destroyed)
         return fail();
-#endif
     constrainInitialSize(w);
     if (owner->destroyed)
         return fail();

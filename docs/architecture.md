@@ -147,14 +147,13 @@ work bounds. The logical 640×480 image fills the actual client rectangle.
 Nearest-neighbor scaling preserves source colors but noninteger scale factors
 necessarily produce uneven destination pixel widths/heights.
 
-Standard reserves its native Windows caption and invisible resize-frame margins.
-Those margins are needed for native icon/title positioning; they are included in
-outer/client size conversion and edge hit regions. X reserves only its custom
-caption. Both keep
+Both editions reserve the same 36-DPI-scaled-pixel caption with no side or bottom
+frame margins. The [shared caption renderer](../src/window/caption.cpp) owns the
+whole strip and disables Windows' native caption painting. Both keep
 invisible edge hit regions and native Windows resizing. A maximized or exactly
 monitor-sized bare popup at attach is preserved. After attach, a launcher can
 select fullscreen by replacing the style with bare `WS_POPUP` (without
-`WS_THICKFRAME`). Fullscreen suspends windowed constraints and X's caption;
+`WS_THICKFRAME`). Fullscreen suspends windowed constraints and the caption;
 maximizing this popup uses monitor bounds rather than the work area. Returning
 the resize capability selects windowed sizing again. This is an observable
 window-style contract, not launcher identification or a polling race.
@@ -179,11 +178,12 @@ increments needed over a border or during a resize drag, then balances only its
 own calls. The host still owns client-area cursor messages. It must not force a
 guessed `ShowCursor` baseline or add an OS cursor over the game's software cursor.
 
-The optional [X edition](x-edition.md) adds its own non-client subclass after the
-renderer attaches. Its caption-only `WM_NCCALCSIZE` leaves game pixels flush with
-both sides and the bottom; invisible edge hit regions retain native resizing.
-It shares aspect/recovery/input code with standard DAWindower. Its launch worker
-owns only a newly created child; it never paints or changes the parent cursor.
+Both editions attach the shared non-client subclass after the renderer attaches.
+Its caption-only `WM_NCCALCSIZE` leaves game pixels flush with both sides and the
+bottom; invisible edge hit regions retain native resizing. The optional
+[X edition](x-edition.md) enables character titles and two extra actions in that
+same renderer. Its launch worker owns only a newly created child; it never paints
+or changes the parent cursor.
 
 For exact loading details, read [integration](integration.md). For historical
 implementation choices, read [the recovery design](standalone-recovery-design.md).

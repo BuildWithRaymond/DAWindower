@@ -2,8 +2,9 @@
 
 X adds window controls to DAWindower's existing renderer. It is an optional
 edition, distributed as **one `DAWindowerX.dll`**, with Windows system dependencies
-only. Use one edition per client. Standard `DAWindower.dll` keeps its native
-Windows title bar and invisible native frame margins, and uses the same loading contract.
+only. Use one edition per client. Both editions share the gradient caption renderer
+and loading contract. Standard `DAWindower.dll` keeps the host's title and three
+ordinary window controls; X adds character titles and two client actions.
 
 [![Actual DAWindower X client with a black gradient title bar, New client and native-size controls](images/x-native.png)](images/x-native.png)
 
@@ -85,13 +86,13 @@ python tools/check_package.py dist/local-x --edition x
 
 The package contains only `dist/local-x/DAWindowerX.dll`. Debug uses `x-debug`.
 No-desktop checks use `x-unit-release` / `x-unit-debug`; they do not exercise
-rendering, title-bar interaction or child injection. X additionally imports the
-Windows `UXTHEME.dll` and `MSIMG32.dll` components beyond standard's `DWMAPI.dll`;
+rendering, title-bar interaction or child injection. Both editions use the Windows
+`DWMAPI.dll`, `UXTHEME.dll` and `MSIMG32.dll` components for their shared caption;
 none is distributed.
 
 ## Code and validation
 
-- [Frame](../src/x/frame.cpp): non-client painting, hit regions, UI lifetime,
+- [Shared caption](../src/window/caption.cpp): non-client painting, hit regions, UI lifetime,
   tooltip/menu actions and asynchronous launch ownership.
 - [Name reader](../src/x/name.cpp): client layout guard, bounded copies and name validation.
 - [Launch transaction](../src/x/launch.cpp): suspended child, injection, resume and failure cleanup.

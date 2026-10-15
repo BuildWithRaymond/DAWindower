@@ -13,9 +13,9 @@ and an optional edition with extra window controls.
 
 </div>
 
-[![Real Dark Ages clients with their game icons: DAWindower with native Windows controls on the left, DAWindower X with its dark title bar and extra controls on the right](docs/images/editions-comparison.png)](docs/images/editions-comparison.png)
+[![Real Dark Ages clients with matching black gradient captions: DAWindower with three window controls on the left, DAWindower X with extra client controls on the right](docs/images/editions-comparison.png)](docs/images/editions-comparison.png)
 
-<p align="center"><sub>Real 7.41 clients. Matching 640×480 game areas. <a href="docs/images/README.md">Capture details and build versions.</a></sub></p>
+<p align="center"><sub>Real 7.41 clients. Shared gradient caption. Matching 640×480 game areas. <a href="docs/images/README.md">Capture details and build versions.</a></sub></p>
 
 ## Familiar game. A stronger foundation.
 
@@ -33,7 +33,7 @@ Windows system components. No proxy DLL, configuration files or extra runtime.
 
 | Edition | What you get |
 | --- | --- |
-| **DAWindower**<br>`DAWindower.dll` | Familiar native Windows title bar and controls. |
+| **DAWindower**<br>`DAWindower.dll` | Black gradient title bar with the game's title and minimize, maximize/restore and close controls. |
 | **DAWindower X**<br>`DAWindowerX.dll` | Black gradient title bar, character name, **+** New client, **1:1** native-size reset and button tooltips. |
 
 Same renderer and recovery. Choose **one edition per client**.
@@ -58,7 +58,7 @@ No specific launcher is required. [Integration details](docs/integration.md)
 cover ordering, fixed filenames and fullscreen behavior.
 
 Tested with actual Dark Ages **7.41** clients.
-[Verification and limits →](docs/icon-validation.md)
+[Verification and limits →](docs/images/README.md#runtime-checks)
 
 ## With love for dawnd
 

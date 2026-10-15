@@ -1,22 +1,15 @@
 #include "sizing.h"
 #include "aspect.h"
 #include "frame.h"
+#include "caption.h"
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
-#ifdef DAW_X
-#include "x/frame.h"
-#endif
 
 namespace daw {
 namespace {
 PixelSize frameSize(HWND window) {
-#ifdef DAW_X
-    return {0, x::frameCaptionHeight(window)};
-#else
-    const auto inset = nativeFrameInsets(window);
-    return {inset.left + inset.right, inset.top + inset.bottom};
-#endif
+    return {0, frameCaptionHeight(window)};
 }
 
 struct Bounds {

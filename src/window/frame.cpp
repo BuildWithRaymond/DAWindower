@@ -20,42 +20,12 @@ bool fullscreenBeforeAttach(HWND window) {
            EqualRect(&outer, &monitor.rcMonitor);
 }
 
-int nativeCaptionHeight(HWND window) {
-    const auto style = GetWindowLongW(window, GWL_STYLE);
-    if (!windowedFrame(window) || (style & WS_CAPTION) != WS_CAPTION)
-        return 0;
-    RECT r{};
-    const auto extended = GetWindowLongW(window, GWL_EXSTYLE);
-    const auto menu = GetMenu(window) != nullptr;
-    if (!AdjustWindowRectExForDpi(&r, style, menu, extended, GetDpiForWindow(window)))
-        AdjustWindowRectEx(&r, style, menu, extended);
-    return std::max(0L, -r.top);
-}
-
 void removeVisibleFrame(HWND window) {
-#ifdef DAW_X
     const auto policy = DWMNCRP_DISABLED;
-#else
-    const auto policy = DWMNCRP_USEWINDOWSTYLE;
-#endif
     DwmSetWindowAttribute(window, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
     // Windows 11's optional one-pixel outline. Older Windows ignores this value.
     const COLORREF noBorder = 0xfffffffe; // DWMWA_COLOR_NONE
     DwmSetWindowAttribute(window, static_cast<DWMWINDOWATTRIBUTE>(34), &noBorder, sizeof(noBorder));
-}
-
-RECT nativeFrameInsets(HWND window) {
-    const auto caption = nativeCaptionHeight(window);
-    if (!caption)
-        return {};
-    // Windows needs its invisible resize frame to position native caption
-    // content. Removing that margin also pushes the icon/title to x=0. Keep
-    // native caption layout without restoring a thick visible side frame.
-    const auto dpi = GetDpiForWindow(window);
-    const auto padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
-    const auto x = std::max(0, GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) + padding - 1);
-    const auto y = std::max(0, GetSystemMetricsForDpi(SM_CYSIZEFRAME, dpi) + padding - 1);
-    return {x, caption, x, y};
 }
 
 int resizeHit(HWND window, POINT screen) {
@@ -65,14 +35,8 @@ int resizeHit(HWND window, POINT screen) {
     if (!windowedFrame(window) || IsZoomed(window))
         return HTCLIENT;
     const auto grip = std::max(4, MulDiv(6, GetDpiForWindow(window), 96));
-#ifdef DAW_X
-    const RECT inset{};
-#else
-    const auto inset = nativeFrameInsets(window);
-#endif
-    const bool left = screen.x < r.left + inset.left + grip,
-               right = screen.x >= r.right - inset.right - grip;
-    const bool top = screen.y < r.top + grip, bottom = screen.y >= r.bottom - inset.bottom - grip;
+    const bool left = screen.x < r.left + grip, right = screen.x >= r.right - grip;
+    const bool top = screen.y < r.top + grip, bottom = screen.y >= r.bottom - grip;
     if (top && left)
         return HTTOPLEFT;
     if (top && right)

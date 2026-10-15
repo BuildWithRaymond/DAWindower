@@ -1,6 +1,8 @@
-#include "frame.h"
-#include "name.h"
-#include "launch.h"
+#include "caption.h"
+#ifdef DAW_X
+#include "x/name.h"
+#include "x/launch.h"
+#endif
 #include "runtime.h"
 #include "window/icon.h"
 #include <commctrl.h>
@@ -14,12 +16,25 @@
 #include <memory>
 #include <process.h>
 
-namespace daw::x {
+namespace daw {
 namespace {
+#ifdef DAW_X
+using x::CharacterName;
+using x::currentClientPaths;
+using x::launchClient;
+using x::LaunchResult;
+using x::stageName;
 constexpr UINT_PTR frameId = 0x44415831;
 constexpr UINT nativeCommand = 0xe820, newCommand = 0xe810;
+constexpr int firstButton = 0;
+#else
+constexpr UINT_PTR frameId = 0x44414331;
+constexpr int firstButton = 2;
+#endif
+constexpr int buttonCount = 5 - firstButton;
 enum class Button { none = -1, newClient, native, minimize, maximize, close };
 
+#ifdef DAW_X
 struct LaunchStatus {
     std::atomic<bool> complete{false};
     LaunchResult result;
@@ -36,6 +51,7 @@ unsigned __stdcall launchWorker(void* parameter) {
     work->status->complete.store(true, std::memory_order_release);
     return 0;
 }
+#endif
 
 struct Layout {
     RECT outer{}, client{}, caption{}, buttons[5]{};
@@ -59,9 +75,10 @@ Layout layout(HWND w) {
     l.caption = {border, border, l.outer.right - border, client.top};
     // Very narrow windows keep every action reachable without imposing a new
     // minimum size or a size breakpoint on the game viewport.
-    const int width = std::min<int>(MulDiv(36, GetDpiForWindow(w), 96),
-                                    std::max<LONG>(1, (l.caption.right - l.caption.left) / 5));
-    for (int i = 0; i < 5; ++i)
+    const int width =
+        std::min<int>(MulDiv(36, GetDpiForWindow(w), 96),
+                      std::max<LONG>(1, (l.caption.right - l.caption.left) / buttonCount));
+    for (int i = firstButton; i < 5; ++i)
         l.buttons[i] = {l.caption.right - (5 - i) * width,
                         l.caption.top,
                         l.caption.right - (4 - i) * width,
@@ -75,7 +92,7 @@ RECT iconBounds(HWND window, const Layout& l) {
     const int height = GetSystemMetricsForDpi(SM_CYSMICON, dpi);
     const auto left = l.caption.left + MulDiv(12, dpi, 96);
     const auto top = l.caption.top + (l.caption.bottom - l.caption.top - height) / 2;
-    if (left + width + MulDiv(8, dpi, 96) > l.buttons[0].left)
+    if (left + width + MulDiv(8, dpi, 96) > l.buttons[firstButton].left)
         return {};
     return {left, top, left + width, top + height};
 }
@@ -92,7 +109,7 @@ POINT localPoint(HWND w, LPARAM packed, bool clientCoordinates = false) {
 }
 
 Button buttonAt(const Layout& l, POINT p) {
-    for (int i = 0; i < 5; ++i)
+    for (int i = firstButton; i < 5; ++i)
         if (PtInRect(&l.buttons[i], p))
             return static_cast<Button>(i);
     return Button::none;
@@ -124,9 +141,11 @@ class Frame {
     HWND tooltip = nullptr;
     UINT_PTR hoverTimer = 0;
     UINT_PTR clockTimer = 0;
+#ifdef DAW_X
     CharacterName characterName;
     std::shared_ptr<LaunchStatus> launch;
     wchar_t launchError[256]{};
+#endif
     wchar_t title[256] = L"Dark Ages";
 
     ~Frame() {
@@ -166,6 +185,7 @@ class Frame {
         refreshing = false;
     }
 
+#ifdef DAW_X
     void updateTitle() {
         if (launch && launch->complete.load(std::memory_order_acquire)) {
             const auto result = launch->result;
@@ -188,6 +208,7 @@ class Frame {
         if (std::wcscmp(next, title) != 0)
             SetWindowTextW(window, next);
     }
+#endif
 
     void paint(HDC supplied = nullptr) {
         if (destroyed || IsIconic(window) || !windowedFrame(window))
@@ -236,7 +257,7 @@ class Frame {
         }
         RECT text = l.caption;
         text.left += MulDiv(12, GetDpiForWindow(window), 96);
-        text.right = l.buttons[0].left - MulDiv(8, GetDpiForWindow(window), 96);
+        text.right = l.buttons[firstButton].left - MulDiv(8, GetDpiForWindow(window), 96);
         const auto bounds = iconBounds(window, l);
         if (icon && !IsRectEmpty(&bounds)) {
             DrawIconEx(caption,
@@ -256,7 +277,7 @@ class Frame {
                       -1,
                       &text,
                       DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
-        for (int i = 0; i < 5; ++i) {
+        for (int i = firstButton; i < 5; ++i) {
             const auto b = static_cast<Button>(i);
             const auto& r = l.buttons[i];
             if (hot == b) {
@@ -279,11 +300,13 @@ class Frame {
             const auto ink = accessible && hot == b ? GetSysColor(COLOR_HIGHLIGHTTEXT) : foreground;
             SetTextColor(caption, ink);
             SetDCPenColor(caption, ink);
+#ifdef DAW_X
             if (b == Button::newClient && !accessible)
                 SetDCPenColor(caption,
                               launch           ? RGB(100, 100, 100)
                               : launchError[0] ? RGB(235, 110, 110)
                                                : ink);
+#endif
             auto oldPen = SelectObject(caption, GetStockObject(DC_PEN));
             auto oldBrush = SelectObject(caption, GetStockObject(NULL_BRUSH));
             const int cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
@@ -365,13 +388,19 @@ class Frame {
         hoverTimer = 0;
         if (!tooltip || hot == Button::none)
             return;
-        const wchar_t* labels[] = {launch           ? L"Starting client\u2026"
-                                   : launchError[0] ? launchError
-                                                    : L"Open another Dark Ages client",
-                                   L"Reset to native size (640 \u00d7 480)",
-                                   L"Minimize",
-                                   IsZoomed(window) ? L"Restore" : L"Maximize",
-                                   L"Close"};
+        const wchar_t* labels[] = {
+#ifdef DAW_X
+            launch           ? L"Starting client\u2026"
+            : launchError[0] ? launchError
+                             : L"Open another Dark Ages client",
+            L"Reset to native size (640 \u00d7 480)",
+#else
+            L"",
+            L"",
+#endif
+            L"Minimize",
+            IsZoomed(window) ? L"Restore" : L"Maximize",
+            L"Close"};
         TOOLINFOW tool{TTTOOLINFOW_V2_SIZE};
         tool.hwnd = window;
         tool.uId = 1;
@@ -392,18 +421,30 @@ class Frame {
     }
 
     void activate(Button b) {
-        if (b == Button::newClient)
-            startLaunch();
-        else if (b == Button::native)
-            nativeSize(window);
-        else if (b == Button::minimize)
-            PostMessageW(window, WM_SYSCOMMAND, SC_MINIMIZE, 0);
-        else if (b == Button::maximize)
-            PostMessageW(window, WM_SYSCOMMAND, IsZoomed(window) ? SC_RESTORE : SC_MAXIMIZE, 0);
-        else if (b == Button::close)
-            PostMessageW(window, WM_SYSCOMMAND, SC_CLOSE, 0);
+        switch (b) {
+#ifdef DAW_X
+            case Button::newClient:
+                startLaunch();
+                break;
+            case Button::native:
+                nativeSize(window);
+                break;
+#endif
+            case Button::minimize:
+                PostMessageW(window, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+                break;
+            case Button::maximize:
+                PostMessageW(window, WM_SYSCOMMAND, IsZoomed(window) ? SC_RESTORE : SC_MAXIMIZE, 0);
+                break;
+            case Button::close:
+                PostMessageW(window, WM_SYSCOMMAND, SC_CLOSE, 0);
+                break;
+            default:
+                break;
+        }
     }
 
+#ifdef DAW_X
     void startLaunch() {
         if (launch)
             return;
@@ -434,6 +475,7 @@ class Frame {
         }
         paint();
     }
+#endif
 };
 
 // Nested DefSubclassProc/SetWindowText/SetCapture calls can destroy the HWND.
@@ -556,36 +598,41 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
     if (m == WM_CANCELMODE || m == WM_CAPTURECHANGED ||
         (m == WM_ACTIVATE && LOWORD(a) == WA_INACTIVE) || (m == WM_ACTIVATEAPP && !a))
         f->cancel();
+#ifdef DAW_X
     if (m == WM_SYSCOMMAND && ((a & 0xfff0) == nativeCommand || (a & 0xfff0) == newCommand)) {
         f->activate((a & 0xfff0) == nativeCommand ? Button::native : Button::newClient);
         return 0;
     }
+#endif
     if (m == WM_TIMER && a == f->hoverTimer && f->hoverTimer) {
         f->showTip();
         return 0;
     }
+#ifdef DAW_X
     if (m == WM_TIMER && a == f->clockTimer && f->clockTimer) {
         f->updateTitle();
         return 0;
     }
+#endif
     if (m == WM_SETTEXT && b && reinterpret_cast<const wchar_t*>(b) != f->title)
         wcsncpy_s(f->title, reinterpret_cast<const wchar_t*>(b), _TRUNCATE);
     const auto result = DefSubclassProc(w, m, a, b);
     if (!f->destroyed) {
-        if (m == WM_DPICHANGED || m == WM_THEMECHANGED || m == WM_SETTINGCHANGE)
+        if (m == WM_DPICHANGED || m == WM_THEMECHANGED || m == WM_SETTINGCHANGE ||
+            m == WM_DWMCOMPOSITIONCHANGED)
             f->refreshStyle();
         if (m == WM_PRINT && (b & PRF_NONCLIENT))
             f->paint(reinterpret_cast<HDC>(a));
         else if (m == WM_SETTEXT || m == WM_WINDOWPOSCHANGED || m == WM_ACTIVATE ||
                  m == WM_DPICHANGED || m == WM_THEMECHANGED || m == WM_SETTINGCHANGE ||
-                 m == WM_SETICON)
+                 m == WM_SETICON || m == WM_DWMCOMPOSITIONCHANGED)
             f->paint();
     }
     return result;
 }
 } // namespace
 
-bool attachFrame(HWND window) {
+bool attachCaption(HWND window) {
     DWORD_PTR existing = 0;
     if (GetWindowSubclass(window, subclass, frameId, &existing))
         return true;
@@ -598,6 +645,11 @@ bool attachFrame(HWND window) {
         return false;
     }
     Call keep(f);
+#ifndef DAW_X
+    GetWindowTextW(window, f->title, 256);
+    if (f->destroyed)
+        return false;
+#endif
     RECT original{};
     GetClientRect(window, &original);
     f->refreshStyle();
@@ -614,10 +666,12 @@ bool attachFrame(HWND window) {
         nativeSize(window, original.right, original.bottom);
     if (f->destroyed)
         return false;
+#ifdef DAW_X
     auto menu = GetSystemMenu(window, FALSE);
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, newCommand, L"New &client");
     AppendMenuW(menu, MF_STRING, nativeCommand, L"&Native dimensions (640 \u00d7 480)");
+#endif
     f->tooltip = CreateWindowExW(WS_EX_TOPMOST,
                                  TOOLTIPS_CLASSW,
                                  nullptr,
@@ -644,14 +698,16 @@ bool attachFrame(HWND window) {
         tool.uId = 1;
         tool.lpszText = const_cast<wchar_t*>(L"");
         if (!SendMessageW(f->tooltip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&tool))) {
-            log(L"X tooltip registration failed: %lu", GetLastError());
+            log(L"Caption tooltip registration failed: %lu", GetLastError());
             DestroyWindow(f->tooltip);
             f->tooltip = nullptr;
         }
     }
     SetWindowTextW(window, f->title);
+#ifdef DAW_X
     if (!f->destroyed)
         f->clockTimer = SetTimer(window, frameId + 2, 1000, nullptr);
+#endif
     return !f->destroyed;
 }
-} // namespace daw::x
+} // namespace daw

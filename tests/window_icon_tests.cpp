@@ -66,101 +66,6 @@ COLORREF iconColor(HICON icon) {
     return color;
 }
 
-#ifndef DAW_X
-int captionIconLeft(HWND w, COLORREF expected) {
-    for (int attempt = 0; attempt < 20; ++attempt) {
-        MSG message{};
-        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
-            TranslateMessage(&message);
-            DispatchMessageW(&message);
-        }
-        DwmFlush();
-        RECT visible{};
-        check(SUCCEEDED(
-                  DwmGetWindowAttribute(w, DWMWA_EXTENDED_FRAME_BOUNDS, &visible, sizeof(visible))),
-              "visible caption bounds");
-        POINT client{};
-        ClientToScreen(w, &client);
-        auto screen = GetDC(nullptr);
-        const auto height = std::max(1L, client.y - visible.top);
-        BITMAPINFO info{};
-        info.bmiHeader = {sizeof(BITMAPINFOHEADER), 64, -height, 1, 32, BI_RGB};
-        DWORD* pixels = nullptr;
-        auto bitmap = CreateDIBSection(
-            screen, &info, DIB_RGB_COLORS, reinterpret_cast<void**>(&pixels), nullptr, 0);
-        auto memory = CreateCompatibleDC(screen);
-        auto previous = SelectObject(memory, bitmap);
-        check(bitmap && memory && pixels && previous && previous != HGDI_ERROR,
-              "allocate bounded caption snapshot");
-        check(BitBlt(memory, 0, 0, 64, height, screen, visible.left, visible.top, SRCCOPY) != FALSE,
-              "capture caption once per compositor attempt");
-        GdiFlush();
-        const DWORD color =
-            (GetRValue(expected) << 16) | (GetGValue(expected) << 8) | GetBValue(expected);
-        int first = 1000;
-        for (int y = 4; y < height; ++y)
-            for (int x = 0; x < 64; ++x)
-                if ((pixels[y * 64 + x] & 0xffffff) == color && x < first)
-                    first = x;
-        SelectObject(memory, previous);
-        DeleteObject(bitmap);
-        DeleteDC(memory);
-        ReleaseDC(nullptr, screen);
-        if (first != 1000)
-            return first;
-        Sleep(20); // Bound the compositor wait; never spin on the desktop.
-    }
-    check(false, "synthetic caption icon appears on the desktop");
-    return 0;
-}
-
-void captionSpacing(HWND w, HICON icon, COLORREF expected) {
-    SetWindowLongW(w, GWL_STYLE, WS_OVERLAPPEDWINDOW);
-    SendMessageW(w, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(icon));
-    SendMessageW(w, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(icon));
-    RECT native{0, 0, 640, 480};
-    AdjustWindowRectExForDpi(&native, WS_OVERLAPPEDWINDOW, FALSE, 0, GetDpiForWindow(w));
-    check(SetWindowPos(w,
-                       HWND_TOPMOST,
-                       40,
-                       40,
-                       native.right - native.left,
-                       native.bottom - native.top,
-                       SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_FRAMECHANGED) != FALSE,
-          "show native caption baseline");
-    const auto original = captionIconLeft(w, expected);
-    auto draw = attach(w);
-    const auto attached = captionIconLeft(w, expected);
-    std::printf("Caption icon left margin: native=%d attached=%d\n", original, attached);
-    check(original > 0 && attached >= MulDiv(6, GetDpiForWindow(w), 96),
-          "standard caption keeps native icon padding after frame removal");
-    RECT outer{}, client{};
-    POINT origin{};
-    check(SUCCEEDED(DwmGetWindowAttribute(w, DWMWA_EXTENDED_FRAME_BOUNDS, &outer, sizeof(outer))),
-          "native visible frame bounds");
-    GetClientRect(w, &client);
-    ClientToScreen(w, &origin);
-    check(origin.x - outer.left >= 0 && origin.x - outer.left <= 1 &&
-              outer.right - origin.x - client.right >= 0 &&
-              outer.right - origin.x - client.right <= 1,
-          "native caption padding adds no thick visible side frame");
-    const auto dpi = GetDpiForWindow(w);
-    const auto hit = SendMessageW(
-        w,
-        WM_NCHITTEST,
-        0,
-        MAKELPARAM(outer.left + attached + MulDiv(8, dpi, 96), outer.top + MulDiv(15, dpi, 96)));
-    check(hit == HTSYSMENU, "padded standard icon retains its native system-menu hit target");
-    SetWindowTextW(w, L"Updated game title");
-    SendMessageW(w, WM_NCACTIVATE, TRUE, 0);
-    check(captionIconLeft(w, expected) == attached,
-          "native caption updates and activation preserve icon spacing");
-    draw->Release();
-    DestroyWindow(w);
-}
-#endif
-
-#ifdef DAW_X
 void paintedIcon(HWND w, COLORREF expected) {
     RECT r{};
     GetWindowRect(w, &r);
@@ -170,17 +75,17 @@ void paintedIcon(HWND w, COLORREF expected) {
     SendMessageW(w, WM_PRINT, reinterpret_cast<WPARAM>(dc), PRF_NONCLIENT);
     const auto dpi = GetDpiForWindow(w);
     const int x = MulDiv(20, dpi, 96), y = MulDiv(18, dpi, 96);
-    check(GetPixel(dc, x, y) == expected, "X paints the actual game icon in its caption");
+    check(GetPixel(dc, x, y) == expected,
+          "shared caption paints the actual game icon in its caption");
     const auto hit = SendMessageW(w, WM_NCHITTEST, 0, MAKELPARAM(r.left + x, r.top + y));
-    check(hit == HTSYSMENU, "X caption icon exposes the native system menu");
+    check(hit == HTSYSMENU, "caption icon exposes the native system menu");
     SelectObject(dc, previous);
     DeleteObject(bitmap);
     DeleteDC(dc);
 }
-#endif
 } // namespace
 
-int main(int argc, char** argv) {
+int main() {
     check(LoadLibraryA(DAW_TEST_DLL_A) != nullptr, "load standalone edition without initializer");
     const auto instance = GetModuleHandleW(nullptr);
     char path[32768]{};
@@ -195,16 +100,6 @@ int main(int argc, char** argv) {
     cls.hInstance = instance;
     cls.lpszClassName = L"DAWIconContract";
     check(RegisterClassExW(&cls) != 0, "register class without an icon");
-#ifndef DAW_X
-    if (argc > 1 && std::strcmp(argv[1], "--caption") == 0) {
-        auto icon = LoadIconW(instance, MAKEINTRESOURCEW(101));
-        captionSpacing(create(cls.lpszClassName), icon, expected);
-        return 0;
-    }
-#else
-    (void)argc;
-    (void)argv;
-#endif
     auto unrelated = create(cls.lpszClassName);
     auto w = create(cls.lpszClassName);
     check(!windowIcon(w, ICON_BIG) && !windowIcon(w, ICON_SMALL), "fixture starts without icons");
@@ -215,9 +110,7 @@ int main(int argc, char** argv) {
           "window icons match the game's first ExtractIconA icon");
     check(!windowIcon(unrelated, ICON_BIG) && !GetClassLongPtrW(w, GCLP_HICON),
           "unrelated windows and the shared class are untouched");
-#ifdef DAW_X
     paintedIcon(w, expected);
-#endif
     draw->Release();
     check(iconColor(smallIcon) == expected, "icon survives DirectDraw release while window lives");
     auto custom = LoadIconW(nullptr, IDI_WARNING);
