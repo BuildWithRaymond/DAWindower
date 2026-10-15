@@ -5,9 +5,10 @@ edition, distributed as **one `DAWindowerX.dll`**, with Windows system dependenc
 only. Use one edition per client. Standard `DAWindower.dll` keeps its native
 Windows title bar, removes side/bottom frame insets and uses the same loading contract.
 
-```text
-Dark Ages · CharacterName          [+] [1:1]   [−] [□] [×]
-```
+[![Actual DAWindower X client with a black gradient title bar, New client and native-size controls](images/x-native.png)](images/x-native.png)
+
+Actual 7.41 main menu before login, with a **640×480** game area.
+[Original captures and comparison](images/README.md).
 
 ## Controls
 

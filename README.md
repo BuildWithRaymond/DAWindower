@@ -15,6 +15,13 @@ with a renderer designed to recover after desktop interruptions. The optional
 [Launcher integration](#use-it-with-an-existing-launcher) · [Build](#build-and-test) ·
 [Contribute](CONTRIBUTING.md) · [Test evidence](docs/x-borderless-validation.md)
 
+[![Actual DAWindower and DAWindower X clients, showing native Windows controls beside the black X title bar and its extra buttons](docs/images/editions-comparison.png)](docs/images/editions-comparison.png)
+
+Actual 7.41 clients at matching **640×480** game dimensions: standard on the
+left, X on the right. The menu animation was captured at different moments.
+[Original standard capture](docs/images/standard-native.png) ·
+[Original X capture](docs/images/x-native.png) · [Capture details](docs/images/README.md)
+
 ## With love for dawnd
 
 For more than twenty years, dawnd has been part of how this community plays

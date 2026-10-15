@@ -11,6 +11,7 @@ Start with the project [README](../README.md) and [contributor guide](../CONTRIB
 | [Testing](testing.md) | Choosing a regression, running actual-client checks or recording a manual transition. |
 | [Launcher integration](integration.md) | Replacing a dawnd resource/injection path or inspecting the optional export ABI. |
 | [DAWindower X](x-edition.md) | Building the optional title-bar edition, using its controls or adding a verified client-name profile. |
+| [Screenshots](images/README.md) | Comparing the two editions and checking original captures, dimensions and scope. |
 | [Changelog](../CHANGELOG.md) | Checking what changed across runtime versions. |
 | [Credits](../CREDITS.md) | Understanding dawnd's legacy and the research references. |
 
