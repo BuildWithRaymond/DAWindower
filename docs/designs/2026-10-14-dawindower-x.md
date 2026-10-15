@@ -79,7 +79,8 @@ Report launch failures visibly with their Windows error and stage.
 Subsequent user requests apply to both editions: preserve native 4:3 windowed
 aspect while accepting every nearest-pixel width/height, without the old 4×3
 size grid. Both retain title bars: native Windows in standard, custom in X.
-Neither reserves side/bottom frame insets. Corner motion follows a continuous
+X reserves no side/bottom frame insets. Standard retains invisible native frame
+margins for correct Windows caption icon/title spacing. Corner motion follows a continuous
 closest-size projection onto 4:3; it never switches between competing axis
 drivers based on a size that the previous callback already changed.
 Invisible edge hit regions retain native resizing and visible resize arrows.

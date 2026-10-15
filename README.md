@@ -13,7 +13,7 @@ with a renderer designed to recover after desktop interruptions. The optional
 
 [Choose an edition](#choose-an-edition) · [Downloads and status](#downloads-and-status) ·
 [Launcher integration](#use-it-with-an-existing-launcher) · [Build](#build-and-test) ·
-[Contribute](CONTRIBUTING.md) · [Test evidence](docs/x-borderless-validation.md)
+[Contribute](CONTRIBUTING.md) · [Test evidence](docs/icon-validation.md)
 
 [![Actual DAWindower and DAWindower X clients, showing native Windows controls beside the black X title bar and its extra buttons](docs/images/editions-comparison.png)](docs/images/editions-comparison.png)
 
@@ -49,9 +49,9 @@ not an add-on that needs both files.
 | Native-size button | Resize through Windows | **1:1** returns the game area to **640×480** |
 | Button tooltips | Native Windows behavior | Descriptions for all five title-bar buttons |
 
-Ordinary windowed clients **keep their title bars**. Both editions remove visible
-side/bottom frame insets while retaining invisible resize grips and visible
-resize arrows. Windows start at native **640×480** game dimensions, resize
+Ordinary windowed clients **keep their title bars**. Standard retains Windows'
+invisible frame margins so its icon and title have native spacing. X uses its
+custom caption without side/bottom insets. Both retain visible resize arrows. Windows start at native **640×480** game dimensions, resize
 smoothly at the native **4:3 aspect ratio**, and maximize to the largest 4:3 game
 area that fits the monitor work area. There are no preset size steps.
 
@@ -199,8 +199,8 @@ and manual observations:
 
 | Evidence | Recorded result |
 | --- | --- |
-| Standard native contracts | 19/19 in Debug and Release. |
-| X native contracts | 21/21 in Release. Debug initially passed 20/21; the remaining child-launch test passed after correcting its fixture timeout. Tooltip-related checks passed in both configurations after the final fix. |
+| Standard native contracts | 21/21 in Debug and Release, including native caption spacing. |
+| X native contracts | 22/22 in Debug and Release, including tooltips, child injection and game icon. |
 | Actual 7.41 client loading | Both editions loaded through remote `LoadLibraryA` alone, with zero initialization calls and no adjacent proxy DLL. |
 | Actual window behavior | Native 640×480 startup, intermediate aspect sizes, launcher-style fullscreen and minimize/restore were checked. Manual testing confirmed both title bars and smooth resizing. |
 | X tooltip acceptance | All five corrected tooltips were confirmed on the actual client. |
@@ -208,7 +208,8 @@ and manual observations:
 
 Exact candidate hashes, build scopes and the initial X prototype's character
 title/New client/native-reset observations are in the
-[current validation record](docs/x-borderless-validation.md). Earlier recovery
+[icon and caption validation record](docs/icon-validation.md); earlier X control checks remain in the
+[X validation record](docs/x-borderless-validation.md). Earlier recovery
 tests included simultaneous actual clients and 20 concurrent synthetic clients;
 those observations remain scoped to their recorded builds.
 

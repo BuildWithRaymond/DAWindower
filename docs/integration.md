@@ -55,7 +55,8 @@ An injector must not race running startup or reuse the DLL as a late renderer sw
 ## Borderless windows and launcher fullscreen
 
 Current source preserves standard's native Windows title bar and X's custom
-caption. Both remove side/bottom frame insets while keeping invisible resize
+caption. Standard retains the invisible native frame margins required for
+Windows' icon/title layout. X removes side/bottom frame insets. Both keep resize
 grips and native 4:3 windowed sizing; the
 normal Windows system menu remains available with Alt+Space.
 
@@ -81,6 +82,26 @@ completed pre-attach transition is not a universal intent signal. Launchers can
 apply their completed fullscreen style/bounds after the resizable window appears.
 Acceptance of each launcher's workflow must be recorded separately; these
 tests do not certify every launcher or injection pattern.
+
+## Game window icon
+
+Both editions restore the first icon embedded in the game window class's module,
+matching dawnd's `ExtractIconA(..., 0)` selection. Restoration happens during
+normal window attachment, outside loader lock. Existing per-window and class
+icons are preserved; later launcher `WM_SETICON` changes retain native behavior.
+
+Standard uses the Windows caption. X draws the same icon in its custom caption;
+the icon opens the native system menu. Both expose small and large window icons
+for Windows and launchers. No icon is embedded in or distributed alongside the
+DLL: the existing game executable supplies its artwork. A missing resource is
+nonfatal.
+
+The implementation loads a shared resource from the already-loaded class module.
+Windows owns that handle, so repeated windows do not allocate private icons or
+add a Shell32 dependency to the DLL. See the
+[icon helper](../src/window/icon.cpp), Microsoft's
+[LoadIcon ownership guidance](https://learn.microsoft.com/en-us/windows/win32/menurc/using-icons),
+and the [native ExtractIconA selection contract](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-extracticona).
 
 ## Optional exports
 

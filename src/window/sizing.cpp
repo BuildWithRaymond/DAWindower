@@ -14,7 +14,8 @@ PixelSize frameSize(HWND window) {
 #ifdef DAW_X
     return {0, x::frameCaptionHeight(window)};
 #else
-    return {0, nativeCaptionHeight(window)};
+    const auto inset = nativeFrameInsets(window);
+    return {inset.left + inset.right, inset.top + inset.bottom};
 #endif
 }
 

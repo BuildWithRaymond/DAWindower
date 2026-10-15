@@ -3,7 +3,7 @@
 X adds window controls to DAWindower's existing renderer. It is an optional
 edition, distributed as **one `DAWindowerX.dll`**, with Windows system dependencies
 only. Use one edition per client. Standard `DAWindower.dll` keeps its native
-Windows title bar, removes side/bottom frame insets and uses the same loading contract.
+Windows title bar and invisible native frame margins, and uses the same loading contract.
 
 [![Actual DAWindower X client with a black gradient title bar, New client and native-size controls](images/x-native.png)](images/x-native.png)
 
@@ -14,13 +14,14 @@ Actual 7.41 main menu before login, with a **640×480** game area.
 
 | Control | Action |
 | --- | --- |
+| Game icon | Open the native Windows system menu. The icon comes from the game executable; launcher-supplied icons take precedence. |
 | + | Start another `Darkages.exe` from this client's game folder and inject the same X DLL before resuming startup. |
 | 1:1 | Restore the window if maximized, then set the actual game client rectangle to 640×480. |
 | − / □ / × | Windows minimize, maximize/restore and close commands. |
 | Empty title bar | Native window move, double-click maximize and system menu behavior. |
 
 The caption uses a restrained charcoal-to-black gradient, light semibold text,
-rounded hover states and descriptive dark tooltips on every button. There is no
+the game icon, rounded hover states and descriptive dark tooltips on every button. There is no
 visible side/bottom border. Invisible edge/corner hit regions keep resizing
 available. The caption follows Windows high-contrast system colors. The two
 extra actions also appear in the

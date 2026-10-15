@@ -2,6 +2,7 @@
 #include "name.h"
 #include "launch.h"
 #include "runtime.h"
+#include "window/icon.h"
 #include <commctrl.h>
 #include <dwmapi.h>
 #include <uxtheme.h>
@@ -66,6 +67,17 @@ Layout layout(HWND w) {
                         l.caption.right - (4 - i) * width,
                         l.caption.bottom};
     return l;
+}
+
+RECT iconBounds(HWND window, const Layout& l) {
+    const auto dpi = GetDpiForWindow(window);
+    const int width = GetSystemMetricsForDpi(SM_CXSMICON, dpi);
+    const int height = GetSystemMetricsForDpi(SM_CYSMICON, dpi);
+    const auto left = l.caption.left + MulDiv(12, dpi, 96);
+    const auto top = l.caption.top + (l.caption.bottom - l.caption.top - height) / 2;
+    if (left + width + MulDiv(8, dpi, 96) > l.buttons[0].left)
+        return {};
+    return {left, top, left + width, top + height};
 }
 
 POINT localPoint(HWND w, LPARAM packed, bool clientCoordinates = false) {
@@ -180,6 +192,9 @@ class Frame {
     void paint(HDC supplied = nullptr) {
         if (destroyed || IsIconic(window) || !windowedFrame(window))
             return;
+        const auto icon = smallWindowIcon(window);
+        if (destroyed)
+            return; // A host WM_GETICON callback may destroy this HWND.
         const auto l = layout(window);
         HDC dc = supplied ? supplied : GetWindowDC(window);
         if (!dc)
@@ -222,6 +237,19 @@ class Frame {
         RECT text = l.caption;
         text.left += MulDiv(12, GetDpiForWindow(window), 96);
         text.right = l.buttons[0].left - MulDiv(8, GetDpiForWindow(window), 96);
+        const auto bounds = iconBounds(window, l);
+        if (icon && !IsRectEmpty(&bounds)) {
+            DrawIconEx(caption,
+                       bounds.left,
+                       bounds.top,
+                       icon,
+                       bounds.right - bounds.left,
+                       bounds.bottom - bounds.top,
+                       0,
+                       nullptr,
+                       DI_NORMAL);
+            text.left = bounds.right + MulDiv(8, GetDpiForWindow(window), 96);
+        }
         if (text.right > text.left)
             DrawTextW(caption,
                       title,
@@ -475,8 +503,13 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
                 return HTCLOSE;
             return HTBORDER;
         }
-        if (PtInRect(&l.caption, p))
-            return HTCAPTION;
+        if (PtInRect(&l.caption, p)) {
+            const auto icon = smallWindowIcon(w);
+            if (f->destroyed)
+                return HTNOWHERE;
+            const auto bounds = iconBounds(w, l);
+            return icon && PtInRect(&bounds, p) ? HTSYSMENU : HTCAPTION;
+        }
         if (PtInRect(&l.client, p))
             return HTCLIENT;
     }
@@ -544,7 +577,8 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
         if (m == WM_PRINT && (b & PRF_NONCLIENT))
             f->paint(reinterpret_cast<HDC>(a));
         else if (m == WM_SETTEXT || m == WM_WINDOWPOSCHANGED || m == WM_ACTIVATE ||
-                 m == WM_DPICHANGED || m == WM_THEMECHANGED || m == WM_SETTINGCHANGE)
+                 m == WM_DPICHANGED || m == WM_THEMECHANGED || m == WM_SETTINGCHANGE ||
+                 m == WM_SETICON)
             f->paint();
     }
     return result;

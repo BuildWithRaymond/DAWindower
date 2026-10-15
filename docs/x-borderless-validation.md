@@ -1,5 +1,9 @@
 # X, borderless windows and launcher geometry
 
+The later [icon/caption validation](icon-validation.md) supersedes this record's
+standard side-inset behavior and adds game icons to both editions. Results below
+remain scoped to their recorded binaries.
+
 Candidate source version: 0.2.3, October 14, 2026. This work is separate from the
 immutable published 0.2.2 preview. Each edition still distributes exactly one
 native x86 DLL; X is an alternative, not a dependency of standard DAWindower.

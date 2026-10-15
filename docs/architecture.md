@@ -147,8 +147,10 @@ work bounds. The logical 640×480 image fills the actual client rectangle.
 Nearest-neighbor scaling preserves source colors but noninteger scale factors
 necessarily produce uneven destination pixel widths/heights.
 
-Standard reserves its native Windows caption; X reserves its custom caption.
-Neither reserves side/bottom frame pixels. Both keep
+Standard reserves its native Windows caption and invisible resize-frame margins.
+Those margins are needed for native icon/title positioning; they are included in
+outer/client size conversion and edge hit regions. X reserves only its custom
+caption. Both keep
 invisible edge hit regions and native Windows resizing. A maximized or exactly
 monitor-sized bare popup at attach is preserved. After attach, a launcher can
 select fullscreen by replacing the style with bare `WS_POPUP` (without

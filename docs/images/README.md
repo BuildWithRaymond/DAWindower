@@ -9,6 +9,10 @@ Both show the actual main menu before login. The animated menu ring was captured
 at different moments, so its colors differ. No character name, account details,
 credentials, chat or unrelated desktop content appears in these images.
 
+These captures predate the [game-icon restoration and standard caption-spacing fix](../icon-validation.md).
+Their exact binary hashes remain recorded below; they are not screenshots of the
+later candidate.
+
 ## Original captures
 
 | Image | Whole window | Game area | Visible difference |

@@ -39,6 +39,7 @@ set(DAW_GRAPHICS
   src/graphics/surface.cpp
   src/graphics/gdi.cpp
   src/window/window.cpp
+  src/window/icon.cpp
   src/window/frame.cpp
   src/window/sizing.cpp)
 if(DAW_BUILD_X)
@@ -61,6 +62,7 @@ target_include_directories(DAWindower PRIVATE include src)
 target_link_libraries(DAWindower PRIVATE daw_geometry ${DAW_SYSTEM_LIBRARIES})
 
 if(BUILD_TESTING)
+  enable_language(RC)
   # Direct source tests exercise recovery without injecting into a retail client.
   add_executable(geometry_tests tests/geometry_tests.cpp)
   target_link_libraries(geometry_tests PRIVATE daw_geometry)
@@ -78,6 +80,7 @@ if(BUILD_TESTING)
   add_executable(presentation_recovery_tests
     tests/presentation_recovery_tests.cpp
     src/window/window.cpp
+    src/window/icon.cpp
     src/window/frame.cpp
     src/window/sizing.cpp
     src/graphics/gdi.cpp
@@ -103,6 +106,7 @@ if(BUILD_TESTING)
     add_dependencies(${target} DAWindower)
   endforeach()
 
+  target_link_libraries(borderless_tests PRIVATE dwmapi)
   add_test(NAME directdraw_contract COMMAND ddraw_harness --self-test)
   add_test(NAME loadlibrary_only_contract COMMAND ddraw_harness --load-only)
   add_test(NAME dormant_unload_contract COMMAND ddraw_harness --dormant-unload)
@@ -124,6 +128,17 @@ if(BUILD_TESTING)
   add_test(NAME fullscreen_before_attach_contract COMMAND borderless_tests --before)
   add_test(NAME fullscreen_after_attach_contract COMMAND borderless_tests --after)
   add_test(NAME client_geometry_gate_contract COMMAND borderless_tests --gates)
+
+  configure_file(tests/window_icon_tests.rc.in window_icon_tests.rc @ONLY)
+  add_executable(window_icon_tests tests/window_icon_tests.cpp "${CMAKE_CURRENT_BINARY_DIR}/window_icon_tests.rc")
+  target_link_libraries(window_icon_tests PRIVATE ddraw dxguid user32 gdi32 shell32 dwmapi)
+  add_dependencies(window_icon_tests DAWindower)
+  add_test(NAME window_icon_contract COMMAND window_icon_tests)
+  set_tests_properties(window_icon_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
+  if(NOT DAW_BUILD_X)
+    add_test(NAME native_caption_spacing_contract COMMAND window_icon_tests --caption)
+    set_tests_properties(native_caption_spacing_contract PROPERTIES LABELS "desktop" RUN_SERIAL TRUE)
+  endif()
 
   add_executable(x_name_tests tests/x_name_tests.cpp src/x/name.cpp)
   target_include_directories(x_name_tests PRIVATE src)

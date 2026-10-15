@@ -5,8 +5,14 @@ changes do not imply a newly tested retail release.
 
 ## Unreleased
 
+- Restore the game's first executable icon in both editions, matching dawnd's
+  visible icon behavior. Preserve launcher/class icons; X paints the icon in its
+  caption and exposes the native system menu there. No icon asset is distributed.
 - Version 0.2.3 candidate: nearest-pixel native 4:3 sizing in both editions,
-  native-titlebar standard windows without side/bottom frame insets, and caption-only X.
+  native-titlebar standard windows, and caption-only X.
+- Fix standard icon/title crowding at the left edge by retaining Windows' invisible
+  frame margins. Keep native caption painting/buttons; account for those margins
+  in continuous aspect sizing and resize hit regions. X caption layout is unchanged.
 - Continuous corner projection removes reproduced backward size jumps while
   retaining nearest-pixel sizing across native tracking limits.
 - X: Dark Ages/character title, charcoal-to-black gradient, button tooltips,

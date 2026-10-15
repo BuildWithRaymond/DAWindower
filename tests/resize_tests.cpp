@@ -191,8 +191,10 @@ int main() {
     }
     MINMAXINFO limits{};
     SendMessageW(w, WM_GETMINMAXINFO, 0, reinterpret_cast<LPARAM>(&limits));
-    const int smallest = limits.ptMinTrackSize.x;
-    const int largest = limits.ptMaxTrackSize.x;
+    // MINMAXINFO reports outer-window dimensions; the pixel sequence below
+    // exercises client dimensions, independently of native caption/frame size.
+    const int smallest = limits.ptMinTrackSize.x - frameWidth;
+    const int largest = limits.ptMaxTrackSize.x - frameWidth;
     check(smallest > 0 && largest >= smallest, "native tracking bounds are ordered");
     clientSize(w, smallest, (smallest * 3 + 2) / 4);
     RECT start{};
@@ -201,7 +203,7 @@ int main() {
     // Bounded even on unusually large virtual desktops; also check the endpoint.
     for (int width = smallest; width <= std::min(largest, smallest + 4096); ++width) {
         auto proposed = start;
-        proposed.right = proposed.left + width;
+        proposed.right = proposed.left + width + frameWidth;
         SendMessageW(w, WM_SIZING, WMSZ_RIGHT, reinterpret_cast<LPARAM>(&proposed));
         SetWindowPos(w,
                      nullptr,

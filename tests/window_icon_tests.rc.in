@@ -1,0 +1,3 @@
+// Synthetic test colors only; no game artwork is included.
+101 ICON "@CMAKE_CURRENT_SOURCE_DIR@/tests/fixtures/window_icon.ico"
+201 ICON "@CMAKE_CURRENT_SOURCE_DIR@/tests/fixtures/secondary_icon.ico"

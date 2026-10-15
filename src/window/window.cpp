@@ -1,6 +1,7 @@
 #include "window.h"
 #include "sizing.h"
 #include "frame.h"
+#include "icon.h"
 #include "runtime.h"
 #include "graphics/gdi.h"
 #include <commctrl.h>
@@ -189,10 +190,14 @@ LRESULT CALLBACK subclass(HWND w, UINT m, WPARAM a, LPARAM b, UINT_PTR id, DWORD
         if (retained->hwnd.load() == w) {
             *r = requested;
 #ifndef DAW_X
-            r->top = std::min(r->bottom, r->top + nativeCaptionHeight(w));
+            const auto inset = nativeFrameInsets(w);
+            r->left += inset.left;
+            r->right -= inset.right;
+            r->top = std::min(r->bottom, r->top + inset.top);
+            r->bottom = std::max(r->top, r->bottom - inset.bottom);
 #endif
         }
-        return 0; // Caption only; game pixels reach both sides and bottom.
+        return 0; // X owns its caption; standard retains native caption layout.
     }
 #ifndef DAW_X
     if (m == WM_NCHITTEST) {
@@ -364,14 +369,17 @@ HRESULT attachWindow(const std::shared_ptr<WindowState>& state, HWND w) {
                0,
                client.right > 0 ? client.right : gameWidth,
                client.bottom > 0 ? client.bottom : gameHeight};
-    // Keep a caption in both windowed editions; no side/bottom frame insets.
+    // Keep a caption in both editions. Standard also retains the invisible
+    // native frame margins needed for Windows' caption-content placement.
     // A launcher that already maximized a bare popup owns its bounds and style.
     SetLastError(0);
     const auto oldStyle = fullscreen ? style : SetWindowLongW(w, GWL_STYLE, newStyle);
     if (owner->destroyed || (!oldStyle && GetLastError()))
         return fail();
 #ifndef DAW_X
-    outer.bottom += nativeCaptionHeight(w);
+    const auto inset = nativeFrameInsets(w);
+    outer.right += inset.left + inset.right;
+    outer.bottom += inset.top + inset.bottom;
 #endif
     if (!SetWindowPos(w,
                       nullptr,
@@ -408,6 +416,9 @@ HRESULT attachWindow(const std::shared_ptr<WindowState>& state, HWND w) {
         return fail();
 #endif
     constrainInitialSize(w);
+    if (owner->destroyed)
+        return fail();
+    applyGameIcon(w);
     if (owner->destroyed)
         return fail();
     owner->attaching = false;

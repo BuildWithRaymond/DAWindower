@@ -44,6 +44,20 @@ void removeVisibleFrame(HWND window) {
     DwmSetWindowAttribute(window, static_cast<DWMWINDOWATTRIBUTE>(34), &noBorder, sizeof(noBorder));
 }
 
+RECT nativeFrameInsets(HWND window) {
+    const auto caption = nativeCaptionHeight(window);
+    if (!caption)
+        return {};
+    // Windows needs its invisible resize frame to position native caption
+    // content. Removing that margin also pushes the icon/title to x=0. Keep
+    // native caption layout without restoring a thick visible side frame.
+    const auto dpi = GetDpiForWindow(window);
+    const auto padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+    const auto x = std::max(0, GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) + padding - 1);
+    const auto y = std::max(0, GetSystemMetricsForDpi(SM_CYSIZEFRAME, dpi) + padding - 1);
+    return {x, caption, x, y};
+}
+
 int resizeHit(HWND window, POINT screen) {
     RECT r{};
     if (!GetWindowRect(window, &r) || !PtInRect(&r, screen))
@@ -51,8 +65,14 @@ int resizeHit(HWND window, POINT screen) {
     if (!windowedFrame(window) || IsZoomed(window))
         return HTCLIENT;
     const auto grip = std::max(4, MulDiv(6, GetDpiForWindow(window), 96));
-    const bool left = screen.x < r.left + grip, right = screen.x >= r.right - grip;
-    const bool top = screen.y < r.top + grip, bottom = screen.y >= r.bottom - grip;
+#ifdef DAW_X
+    const RECT inset{};
+#else
+    const auto inset = nativeFrameInsets(window);
+#endif
+    const bool left = screen.x < r.left + inset.left + grip,
+               right = screen.x >= r.right - inset.right - grip;
+    const bool top = screen.y < r.top + grip, bottom = screen.y >= r.bottom - inset.bottom - grip;
     if (top && left)
         return HTTOPLEFT;
     if (top && right)

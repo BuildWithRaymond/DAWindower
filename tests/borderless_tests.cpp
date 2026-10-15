@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <ddraw.h>
+#include <dwmapi.h>
 #include "dawindower.h"
 #include <cstdio>
 #include <cstdlib>
@@ -30,6 +31,20 @@ void flushClient(HWND w, int caption = 0) {
     GetClientRect(w, &c);
     POINT p{};
     ClientToScreen(w, &p);
+#ifndef DAW_X
+    if (caption) {
+        RECT visible{};
+        check(SUCCEEDED(
+                  DwmGetWindowAttribute(w, DWMWA_EXTENDED_FRAME_BOUNDS, &visible, sizeof(visible))),
+              "native visible frame bounds");
+        check(p.x - visible.left >= 0 && p.x - visible.left <= 1 &&
+                  visible.right - p.x - c.right >= 0 && visible.right - p.x - c.right <= 1 &&
+                  visible.bottom - p.y - c.bottom >= 0 && visible.bottom - p.y - c.bottom <= 1 &&
+                  p.y == r.top + caption,
+              "native caption keeps invisible margins without a thick visible frame");
+        return;
+    }
+#endif
     check(p.x == r.left && p.y == r.top + caption && c.right == r.right - r.left &&
               c.bottom + caption == r.bottom - r.top,
           "no visible outer frame or unused client margin");
@@ -116,7 +131,12 @@ int main(int argc, char** argv) {
         GetClientRect(w, &client);
         const auto move = reinterpret_cast<decltype(&MoveWindow)>(
             GetProcAddress(GetModuleHandleW(L"user32.dll"), "MoveWindow"));
-        check(move(w, 20, 20, 801, 601 + selected.bottom - selected.top - client.bottom, FALSE),
+        check(move(w,
+                   20,
+                   20,
+                   801 + selected.right - selected.left - client.right,
+                   601 + selected.bottom - selected.top - client.bottom,
+                   FALSE),
               "direct native launcher MoveWindow remains available");
         GetClientRect(w, &client);
         check(client.right == 801 && client.bottom == 601,
@@ -191,6 +211,10 @@ int main(int argc, char** argv) {
 #endif
         flushClient(w, caption);
         const auto r = outer(w);
+        RECT beforeClient{};
+        GetClientRect(w, &beforeClient);
+        const int frameWidth = r.right - r.left - beforeClient.right;
+        const int frameHeight = r.bottom - r.top - beforeClient.bottom;
         check(SendMessageW(w, WM_NCHITTEST, 0, MAKELPARAM(r.left + 100, r.top + caption / 2)) ==
                   HTCAPTION,
               "both editions retain a draggable title bar");
@@ -207,8 +231,27 @@ int main(int argc, char** argv) {
         for (unsigned i = 0; i < 8; ++i)
             check(SendMessageW(w, WM_NCHITTEST, 0, MAKELPARAM(points[i].x, points[i].y)) == hits[i],
                   "invisible edges retain all eight native resize hit regions");
-        SetWindowPos(
-            w, nullptr, 0, 0, 801, 480 + caption, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+#ifndef DAW_X
+        POINT clientOrigin{};
+        ClientToScreen(w, &clientOrigin);
+        const POINT visibleEdges[] = {
+            {clientOrigin.x + 1, clientOrigin.y + beforeClient.bottom / 2},
+            {clientOrigin.x + beforeClient.right - 1, clientOrigin.y + beforeClient.bottom / 2},
+            {clientOrigin.x + beforeClient.right / 2, clientOrigin.y + beforeClient.bottom - 1}};
+        const int visibleHits[] = {HTLEFT, HTRIGHT, HTBOTTOM};
+        for (unsigned i = 0; i < 3; ++i)
+            check(SendMessageW(
+                      w, WM_NCHITTEST, 0, MAKELPARAM(visibleEdges[i].x, visibleEdges[i].y)) ==
+                      visibleHits[i],
+                  "resize grips reach the visible game edges beyond invisible native margins");
+#endif
+        SetWindowPos(w,
+                     nullptr,
+                     0,
+                     0,
+                     801 + frameWidth,
+                     480 + frameHeight,
+                     SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
         RECT c{};
         GetClientRect(w, &c);
         check(c.right == 801 && c.bottom == 601,
