@@ -8,6 +8,7 @@ struct WindowState;
 // Unknown DCs retain native BitBlt semantics; game networking/input is untouched.
 HRESULT trackWindow(HWND window, const std::shared_ptr<WindowState>& state);
 void untrackWindow(HWND window);
+bool tracksWindow(HWND window);
 BOOL WINAPI windowBitBlt(HDC destination,
                          int x,
                          int y,

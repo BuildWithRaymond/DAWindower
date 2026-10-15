@@ -1,4 +1,5 @@
 #include "dawindower.h"
+#include "window_size.h"
 #include <ddraw.h>
 #include <windowsx.h>
 #include <cstdio>
@@ -40,11 +41,7 @@ void fill(IDirectDrawSurface* surface, DWORD color) {
 
 void resize(HWND window, int width, int height) {
     RECT outer{0, 0, width, height};
-    check(AdjustWindowRectEx(&outer,
-                             GetWindowLongW(window, GWL_STYLE),
-                             FALSE,
-                             GetWindowLongW(window, GWL_EXSTYLE)) != FALSE,
-          "compute client size");
+    check(adjustForClient(window, outer), "compute client size");
     check(SetWindowPos(window,
                        nullptr,
                        100,
@@ -94,7 +91,7 @@ int main(int argc, char** argv) {
         cursorBackgroundOnly |= std::strcmp(argv[index], "--cursor-background") == 0;
         loadOnly |= std::strcmp(argv[index], "--load-only") == 0;
     }
-    auto module = LoadLibraryW(proxy ? L"ddraw.dll" : L"DAWindower.dll");
+    auto module = LoadLibraryW(proxy ? L"ddraw.dll" : DAW_TEST_DLL_W);
     check(module != nullptr, "load compatibility component");
     auto init = reinterpret_cast<DAWindowerEntry>(GetProcAddress(module, "DAWindowerInitialize"));
     auto stop = reinterpret_cast<DAWindowerEntry>(GetProcAddress(module, "DAWindowerShutdown"));
@@ -209,17 +206,16 @@ int main(int argc, char** argv) {
                              frame,
                              nullptr,
                              DDBLTFAST_WAIT),
-            "present after non-4:3 resize");
+            "present after fitting conflicting resize dimensions");
     {
         RECT client{};
         GetClientRect(window, &client);
-        check(client.right == 1280 && client.bottom == 720,
-              "arbitrary window size stays unchanged");
-        Snapshot image(window, 1280, 720);
+        check(client.right == 960 && client.bottom == 720, "requested wide box fits native aspect");
+        Snapshot image(window, 960, 720);
         check(image.pixel(900, 650) == RGB(0, 0, 255), "fixed frame fills fitted client");
         check(image.pixel(10, 360) == RGB(0, 0, 255), "game image fills former letterbox area");
     }
-    SendMessageW(window, WM_MOUSEMOVE, 0, MAKELPARAM(640, 360));
+    SendMessageW(window, WM_MOUSEMOVE, 0, MAKELPARAM(480, 360));
     check(mouseX == 320 && mouseY == 240, "mouse coordinates match resized frame");
     background->Release();
     cursor->Release();

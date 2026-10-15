@@ -1,4 +1,5 @@
 #include "dawindower.h"
+#include "window_size.h"
 #include <ddraw.h>
 #include <cstdio>
 #include <cstdlib>
@@ -52,7 +53,7 @@ int main(int argc, char** argv) {
         readbackOnly |= std::strcmp(argv[index], "--ddraw-readback") == 0;
         loadOnly |= std::strcmp(argv[index], "--load-only") == 0;
     }
-    auto module = LoadLibraryW(proxy ? L"ddraw.dll" : L"DAWindower.dll");
+    auto module = LoadLibraryW(proxy ? L"ddraw.dll" : DAW_TEST_DLL_W);
     check(module != nullptr, "load component");
     auto init = reinterpret_cast<DAWindowerEntry>(GetProcAddress(module, "DAWindowerInitialize"));
     auto stop = reinterpret_cast<DAWindowerEntry>(GetProcAddress(module, "DAWindowerShutdown"));
@@ -120,15 +121,14 @@ int main(int argc, char** argv) {
             proposed.top -= 120;
         if (bottom)
             proposed.bottom += 120;
-        const auto requested = proposed;
         SendMessageW(window, WM_SIZING, edge, reinterpret_cast<LPARAM>(&proposed));
-        check(EqualRect(&requested, &proposed) != FALSE,
-              "native edge and corner sizes stay unchanged");
         const auto width = proposed.right - proposed.left - frameWidth;
         const auto height = proposed.bottom - proposed.top - frameHeight;
-        check(width == baseClient.right + ((left || right) ? 160 : 0) &&
-                  height == baseClient.bottom + ((top || bottom) ? 120 : 0),
-              "axes resize independently");
+        check(std::llabs(3LL * width - 4LL * height) <= 2,
+              "native edge and corner sizes keep nearest-pixel aspect");
+        check((!(left || right) || width == baseClient.right + 160) &&
+                  (!(top || bottom) || height == baseClient.bottom + 120),
+              "requested drag axis drives coupled dimensions");
         if (left)
             check(proposed.right == base.right, "left drag anchors opposite right edge");
         if (right)
@@ -156,8 +156,7 @@ int main(int argc, char** argv) {
     check(grown.right == baseClient.right + 160 && grown.bottom == baseClient.bottom + 120,
           "upward corner resize grows actual game client");
     RECT outer{0, 0, 1280, 960};
-    AdjustWindowRectEx(
-        &outer, GetWindowLongW(window, GWL_STYLE), FALSE, GetWindowLongW(window, GWL_EXSTYLE));
+    adjustForClient(window, outer);
     check(SetWindowPos(window,
                        nullptr,
                        100,
@@ -243,8 +242,7 @@ int main(int argc, char** argv) {
               GetPixel(windowDC, 602, 201) == RGB(0, 255, 0),
           "nearest neighbor makes exact two-pixel blocks");
     outer = {0, 0, 960, 960};
-    AdjustWindowRectEx(
-        &outer, GetWindowLongW(window, GWL_STYLE), FALSE, GetWindowLongW(window, GWL_EXSTYLE));
+    adjustForClient(window, outer);
     check(SetWindowPos(window,
                        nullptr,
                        100,
@@ -256,42 +254,44 @@ int main(int argc, char** argv) {
     dispatchPresentation();
     RECT fitted{};
     GetClientRect(window, &fitted);
-    check(fitted.right == 960 && fitted.bottom == 960,
-          "programmatic resize keeps arbitrary client dimensions");
+    check(fitted.right == 960 && fitted.bottom == 720,
+          "programmatic resize fits native aspect inside conflicting dimensions");
     check(GetPixel(windowDC, 0, 0) == RGB(0, 255, 0) &&
-              GetPixel(windowDC, 959, 959) == RGB(0, 255, 0) &&
+              GetPixel(windowDC, 959, 719) == RGB(0, 255, 0) &&
               GetPixel(windowDC, 400, 50) == RGB(0, 255, 0),
           "actual game image fills client without black bars");
-    check(GetPixel(windowDC, 450, 200) == RGB(255, 255, 255),
-          "independent horizontal and vertical scaling");
-    for (int y = 198; y != 205; ++y)
+    check(GetPixel(windowDC, 450, 150) == RGB(255, 255, 255),
+          "native-aspect fractional scaling preserves source pixel position");
+    for (int y = 148; y != 155; ++y)
         for (int x = 448; x != 455; ++x) {
             const auto color = GetPixel(windowDC, x, y);
             check(color == RGB(0, 255, 0) || color == RGB(255, 255, 255),
                   "fractional scaling never interpolates pixel colors");
         }
-    ShowWindow(window, SW_MAXIMIZE);
+    nativeShowWindow(window, SW_MAXIMIZE);
     dispatchPresentation();
     RECT maximized{};
     GetClientRect(window, &maximized);
     check(IsZoomed(window) != FALSE && maximized.right > 0 && maximized.bottom > 0,
           "native monitor maximize works");
+    check(std::llabs(3LL * maximized.right - 4LL * maximized.bottom) <= 2,
+          "maximized game client keeps native aspect ratio");
     check(GetPixel(windowDC, 0, 0) == RGB(0, 255, 0) &&
               GetPixel(windowDC, maximized.right - 1, maximized.bottom - 1) == RGB(0, 255, 0),
           "maximize fills client without bars");
     ShowWindow(window, SW_MINIMIZE);
     check(IsIconic(window) != FALSE, "minimize still works");
-    ShowWindow(window, SW_RESTORE);
+    nativeShowWindow(window, SW_RESTORE);
     dispatchPresentation();
     GetClientRect(window, &fitted);
     check(IsZoomed(window) != FALSE && fitted.right == maximized.right &&
               fitted.bottom == maximized.bottom,
           "restore from minimized maximized window retains maximized state");
-    ShowWindow(window, SW_RESTORE);
+    nativeShowWindow(window, SW_RESTORE);
     dispatchPresentation();
     GetClientRect(window, &fitted);
-    check(fitted.right == 960 && fitted.bottom == 960,
-          "restore retains arbitrary normal-window dimensions");
+    check(fitted.right == 960 && fitted.bottom == 720,
+          "restore retains native-aspect normal-window dimensions");
     RECT corners{};
     GetWindowRect(window, &corners);
 
@@ -337,5 +337,5 @@ int main(int argc, char** argv) {
     DeleteObject(smallBitmap);
     DeleteDC(dc);
     std::puts(
-        "PASS: full-client GDI output, free resizing, nearest neighbor, coalesced cursor and native DD DCs");
+        "PASS: full-client GDI output, native aspect, nearest neighbor, coalesced cursor and native DD DCs");
 }

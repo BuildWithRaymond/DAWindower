@@ -2,10 +2,17 @@
 // Mirrors the original launchers' x86 suspended-start / LoadLibraryA route.
 #include <windows.h>
 #include <tlhelp32.h>
+#include "../tests/window_size.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+
+#ifdef DAW_X
+constexpr int reviewLeft = 760;
+#else
+constexpr int reviewLeft = 40;
+#endif
 
 static void require(bool ok, const char* what) {
     if (!ok) {
@@ -34,6 +41,56 @@ static HWND window(DWORD pid) {
     WindowSearch result{pid};
     EnumWindows(find, reinterpret_cast<LPARAM>(&result));
     return result.hwnd;
+}
+
+static void fullscreenRoundTrip(HWND w) {
+    const auto style = GetWindowLongA(w, GWL_STYLE);
+    RECT normal{}, client{};
+    require(GetWindowRect(w, &normal) && GetClientRect(w, &client),
+            "save isolated client's windowed placement");
+    MONITORINFO monitor{sizeof(monitor)};
+    require(GetMonitorInfoW(MonitorFromWindow(w, MONITOR_DEFAULTTONEAREST), &monitor) != FALSE,
+            "read retail fullscreen monitor");
+    SetWindowLongA(w, GWL_STYLE, WS_POPUP);
+    ShowWindow(w, SW_MAXIMIZE);
+    Sleep(300);
+    RECT actual{};
+    GetWindowRect(w, &actual);
+    require(IsZoomed(w) && EqualRect(&actual, &monitor.rcMonitor),
+            "actual client honors native launcher popup plus maximize");
+    RECT fullClient{};
+    POINT origin{};
+    GetClientRect(w, &fullClient);
+    ClientToScreen(w, &origin);
+    require(origin.x == actual.left && origin.y == actual.top &&
+                fullClient.right == actual.right - actual.left &&
+                fullClient.bottom == actual.bottom - actual.top,
+            "actual fullscreen has no caption, border or unused client margin");
+    ShowWindow(w, SW_MINIMIZE);
+    require(IsIconic(w) != FALSE, "actual fullscreen can minimize");
+    ShowWindow(w, SW_RESTORE);
+    GetWindowRect(w, &actual);
+    require(IsZoomed(w) && EqualRect(&actual, &monitor.rcMonitor),
+            "actual fullscreen survives minimize and restore");
+    ShowWindow(w, SW_RESTORE);
+    SetWindowLongA(w, GWL_STYLE, style);
+    require(SetWindowPos(w,
+                         nullptr,
+                         normal.left,
+                         normal.top,
+                         normal.right - normal.left,
+                         normal.bottom - normal.top,
+                         SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED) != FALSE,
+            "return isolated client to its windowed mode");
+    RECT restored{};
+    GetClientRect(w, &restored);
+    require(restored.right == client.right && restored.bottom == client.bottom,
+            "actual client returns to exact windowed game dimensions");
+    std::printf(
+        "FULLSCREEN hwnd=%p monitor=%ldx%ld minimize_restore=passed windowed_restore=passed\n",
+        w,
+        fullClient.right,
+        fullClient.bottom);
 }
 
 static unsigned snapshot(HWND w, DWORD pid) {
@@ -103,6 +160,7 @@ static void modules(DWORD pid) {
         do {
             if (_wcsicmp(m.szModule, L"ddraw.dll") == 0 ||
                 _wcsicmp(m.szModule, L"DAWindower.dll") == 0 ||
+                _wcsicmp(m.szModule, L"DAWindowerX.dll") == 0 ||
                 _wcsicmp(m.szModule, L"dawnd.dll") == 0)
                 std::printf("MODULE pid=%lu path=%ls\n", pid, m.szExePath);
         } while (Module32NextW(list, &m));
@@ -111,7 +169,8 @@ static void modules(DWORD pid) {
 
 int main(int argc, char** argv) {
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
-    if (argc == 4 && std::strcmp(argv[1], "--launch") == 0) {
+    const bool nativeReview = argc == 4 && std::strcmp(argv[1], "--launch-native") == 0;
+    if (argc == 4 && (std::strcmp(argv[1], "--launch") == 0 || nativeReview)) {
         const auto name = std::strrchr(argv[2], '\\');
         require(name && _stricmp(name + 1, "Darkages.exe") == 0,
                 "only isolated Darkages.exe supported");
@@ -168,8 +227,30 @@ int main(int argc, char** argv) {
         Sleep(1500);
         const auto style = GetWindowLongW(w, GWL_STYLE);
         require((style & WS_THICKFRAME) != 0, "retail window immediately resizable");
+        if (nativeReview) {
+            RECT client{};
+            GetClientRect(w, &client);
+            require(client.right == 640 && client.bottom == 480,
+                    "actual startup preserves native game dimensions without helper resizing");
+            require(
+                SetWindowPos(
+                    w, nullptr, reviewLeft, 40, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE) !=
+                    FALSE,
+                "place native review window without resizing it");
+            const auto hash = snapshot(w, p.dwProcessId);
+            std::printf("PASS_NATIVE pid=%lu hwnd=%p client=%ldx%ld style=%08lx snapshot=%08x\n",
+                        p.dwProcessId,
+                        w,
+                        client.right,
+                        client.bottom,
+                        style,
+                        hash);
+            modules(p.dwProcessId);
+            CloseHandle(p.hProcess);
+            return hash ? 0 : 1;
+        }
         RECT outer{0, 0, 960, 720};
-        AdjustWindowRectEx(&outer, style, GetMenu(w) != nullptr, GetWindowLongW(w, GWL_EXSTYLE));
+        adjustForClient(w, outer);
         require(SetWindowPos(w,
                              nullptr,
                              40,
@@ -185,9 +266,9 @@ int main(int argc, char** argv) {
         // Exercise every intermediate size on an actual client, not just
         // convenient 4:3 endpoints that hid the previous 4x3 size grid.
         for (int width = 1000; width <= 1016; ++width) {
-            outer = {0, 0, width, 703};
-            AdjustWindowRectEx(
-                &outer, style, GetMenu(w) != nullptr, GetWindowLongW(w, GWL_EXSTYLE));
+            const int height = (width * 3 + 2) / 4;
+            outer = {0, 0, width, height};
+            adjustForClient(w, outer);
             require(SetWindowPos(w,
                                  nullptr,
                                  0,
@@ -197,13 +278,13 @@ int main(int argc, char** argv) {
                                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE) != FALSE,
                     "one-pixel retail resize");
             GetClientRect(w, &r);
-            require(r.right == width && r.bottom == 703,
-                    "retail keeps every requested pixel dimension");
+            require(r.right == width && r.bottom == height,
+                    "retail keeps every width pixel at native aspect");
         }
-        for (int height = 703; height <= 719; ++height) {
-            outer = {0, 0, 1016, height};
-            AdjustWindowRectEx(
-                &outer, style, GetMenu(w) != nullptr, GetWindowLongW(w, GWL_EXSTYLE));
+        for (int height = 750; height <= 766; ++height) {
+            const int width = (height * 4 + 1) / 3;
+            outer = {0, 0, width, height};
+            adjustForClient(w, outer);
             require(SetWindowPos(w,
                                  nullptr,
                                  0,
@@ -213,8 +294,24 @@ int main(int argc, char** argv) {
                                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE) != FALSE,
                     "one-pixel retail height resize");
             GetClientRect(w, &r);
-            require(r.right == 1016 && r.bottom == height, "retail height independent from width");
+            require(r.right == width && r.bottom == height,
+                    "retail keeps every height pixel at native aspect");
         }
+        fullscreenRoundTrip(w);
+        // Leave this helper's own new clients side by side for manual review.
+        outer = {0, 0, 640, 480};
+        require(adjustForClient(w, outer), "measure review client caption");
+        require(SetWindowPos(w,
+                             nullptr,
+                             reviewLeft,
+                             40,
+                             outer.right - outer.left,
+                             outer.bottom - outer.top,
+                             SWP_NOZORDER | SWP_NOACTIVATE) != FALSE,
+                "place isolated review client");
+        GetClientRect(w, &r);
+        require(r.right == 640 && r.bottom == 480,
+                "review client returns to exact native dimensions");
         auto hash = snapshot(w, p.dwProcessId);
         std::printf("PASS pid=%lu hwnd=%p client=%ldx%ld style=%08lx snapshot=%08x\n",
                     p.dwProcessId,
@@ -247,6 +344,6 @@ int main(int argc, char** argv) {
     }
     std::fprintf(
         stderr,
-        "Usage: retail_loadlibrary_test --launch absolute-Darkages.exe absolute-DLL | --observe pid...\n");
+        "Usage: retail_loadlibrary_test --launch|--launch-native absolute-Darkages.exe absolute-DLL | --observe pid...\n");
     return 2;
 }

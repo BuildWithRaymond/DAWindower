@@ -52,6 +52,36 @@ import. Dynamic factory resolution, COM activation, calls originating inside
 another DLL's DllMain and other DirectDraw interface generations are not validated.
 An injector must not race running startup or reuse the DLL as a late renderer swap.
 
+## Borderless windows and launcher fullscreen
+
+Current source preserves standard's native Windows title bar and X's custom
+caption. Both remove side/bottom frame insets while keeping invisible resize
+grips and native 4:3 windowed sizing; the
+normal Windows system menu remains available with Alt+Space.
+
+For launcher-controlled borderless fullscreen, a bare `WS_POPUP` without
+`WS_THICKFRAME` selects external geometry ownership. A maximized or monitor-sized
+bare popup already present at attachment is preserved. Applying the bare style
+after attachment also suspends windowed aspect constraints and X's caption.
+Native maximize then uses monitor bounds; an explicit monitor rectangle is
+respected. The renderer fills that rectangle and maps mouse coordinates with it.
+This desktop-window mode does not expose exclusive DirectDraw fullscreen.
+
+Only Dark Ages' EXE import slots for MoveWindow, ShowWindow and SetWindowLongA are
+adapted. Late client geometry/style resets cannot undo the selected placement.
+GWL_USERDATA, untracked windows, teardown hide, minimize and restore-from-minimize
+keep their native paths. Direct USER32 operations from an external launcher or
+its injected helper are outside the EXE adapters. No launcher initialization call,
+configuration file or special launcher identity is introduced.
+
+This contract is tested with synthetic launchers in both completed orderings.
+A bare popup that has not yet been maximized or assigned monitor bounds before
+attachment is indistinguishable from the game's original window. That partially
+completed pre-attach transition is not a universal intent signal. Launchers can
+apply their completed fullscreen style/bounds after the resizable window appears.
+Actual AoSda acceptance must be recorded separately; these tests do not certify
+every launcher or injection pattern.
+
 ## Optional exports
 
 The stable x86 exports use `DWORD WINAPI(void*)`:

@@ -11,12 +11,23 @@
       "binaryDir": "${sourceDir}/build/windows-x86",
       "installDir": "${sourceDir}/dist/local",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
-      "cacheVariables": { "BUILD_TESTING": true, "DAW_BUILD_PROXY_TESTS": false }
+      "cacheVariables": { "BUILD_TESTING": true, "DAW_BUILD_PROXY_TESTS": false, "DAW_BUILD_X": false }
+    },
+    {
+      "name": "windows-x86-x",
+      "inherits": "windows-x86",
+      "displayName": "DAWindower X · Windows x86",
+      "description": "Optional black title bar and client controls; still one standalone DLL.",
+      "binaryDir": "${sourceDir}/build/windows-x86-x",
+      "installDir": "${sourceDir}/dist/local-x",
+      "cacheVariables": { "DAW_BUILD_X": true }
     }
   ],
   "buildPresets": [
     { "name": "release", "configurePreset": "windows-x86", "configuration": "Release" },
-    { "name": "debug", "configurePreset": "windows-x86", "configuration": "Debug" }
+    { "name": "debug", "configurePreset": "windows-x86", "configuration": "Debug" },
+    { "name": "x-release", "configurePreset": "windows-x86-x", "configuration": "Release" },
+    { "name": "x-debug", "configurePreset": "windows-x86-x", "configuration": "Debug" }
   ],
   "testPresets": [
     {
@@ -43,6 +54,27 @@
       "name": "unit-debug",
       "inherits": "unit-release",
       "displayName": "Debug · no-desktop unit tests",
+      "configuration": "Debug"
+    },
+    {
+      "name": "x-release",
+      "inherits": "release",
+      "configurePreset": "windows-x86-x",
+      "displayName": "DAWindower X · Release · full suite"
+    },
+    {
+      "name": "x-debug",
+      "inherits": "x-release",
+      "configuration": "Debug"
+    },
+    {
+      "name": "x-unit-release",
+      "inherits": "x-release",
+      "filter": { "include": { "label": "unit" } }
+    },
+    {
+      "name": "x-unit-debug",
+      "inherits": "x-unit-release",
       "configuration": "Debug"
     }
   ]

@@ -5,13 +5,14 @@ of LoadLibrary-only retail startup, and a simulated loss is not a physical monit
 
 ## Automated test map
 
-The default build defines 13 contracts. `unit` requires no desktop; `desktop`
+The standard build defines 19 contracts; X defines 21. `unit` requires no desktop; `desktop`
 uses native Windows graphics/window behavior. Desktop cases are serialized even
 when CTest is invoked with parallel execution.
 
 | Contract | Source | What it protects |
 | --- | --- | --- |
 | `geometry` | [geometry_tests.cpp](../tests/geometry_tests.cpp) | Full-client viewport, independent scaling and input boundaries. |
+| `aspect_geometry` | [aspect_tests.cpp](../tests/aspect_tests.cpp) | Native 4:3 nearest-pixel rounding, fit bounds, one-pixel sequences and overflow. |
 | `surface_recovery_contract` | [recovery_tests.cpp](../tests/recovery_tests.cpp) | Lost source/destination, retained pixels, keys, COM/attachment identity, leases and bounded repair/recreation. |
 | `presentation_recovery_contract` | [presentation_recovery_tests.cpp](../tests/presentation_recovery_tests.cpp) | Failed GDI/queue operations; timer-only retained-frame recovery and minimize/restore. |
 | `directdraw_contract` | [ddraw_harness.cpp](../tools/ddraw_harness.cpp) | Wrapped factory, caps, drawing, lifetimes and shutdown. |
@@ -22,8 +23,15 @@ when CTest is invoked with parallel execution.
 | `retail_render_loadlibrary_contract` | Same render test | The same path through LoadLibrary-only loading. |
 | `gdi_render_contract` | [gdi_render_tests.cpp](../tests/gdi_render_tests.cpp) | Native cached DCs, actual window pixels, scaling and coalesced cursor composition. |
 | `gdi_render_loadlibrary_contract` | Same GDI test | The same GDI path through LoadLibrary-only loading. |
-| `smooth_resize_contract` | [resize_tests.cpp](../tests/resize_tests.cpp) | One-pixel size steps, portrait/wide windows, host messages and mouse mapping. |
+| `native_aspect_resize_contract` | [resize_tests.cpp](../tests/resize_tests.cpp) | Coupled nearest-pixel sizes, all eight anchored drag directions, host messages and mouse mapping. |
 | `resize_cursor_contract` | [resize_cursor_tests.cpp](../tests/resize_cursor_tests.cpp) | Eight arrow shapes, visibility count balance, repeated hover, drag and cleanup. |
+| `borderless_window_contract` | [borderless_tests.cpp](../tests/borderless_tests.cpp) | Native/custom draggable title bars, no side/bottom frame insets, eight invisible resize regions and 4:3 sizing. |
+| `fullscreen_before_attach_contract` | Same borderless test | Completed launcher popup/maximized bounds survive renderer attachment. |
+| `fullscreen_after_attach_contract` | Same borderless test | Later native launcher style/bounds bypass windowed aspect constraints and X chrome. |
+| `client_geometry_gate_contract` | Same borderless test | Client import resets cannot undo placement; native launcher calls, user data, unrelated windows and hide/minimize/restore pass through. |
+| `x_name_contract` | [x_name_tests.cpp](../tests/x_name_tests.cpp) | Bounded decoding, rejected executable layouts and unknown-host fallback; no desktop required. |
+| `x_titlebar_contract` (X only) | [x_titlebar_tests.cpp](../tests/x_titlebar_tests.cpp) | Gradient caption, all five delayed native tooltip descriptions/dismissal, cursor ownership, cancelled clicks, native reset, independent windows and GDI cleanup. |
+| `x_launch_contract` (X only) | [x_launch_tests.cpp](../tests/x_launch_tests.cpp), [fixture](../tests/x_launch_fixture.cpp) | Real suspended synthetic child, Unicode paths, injection ordering, UI button/worker wiring and failed-child cleanup. |
 
 The test called `retail_render_contract` is synthetic. Only the separate helper
 below launches an actual Dark Ages client.
@@ -35,7 +43,7 @@ and GDI failures reproducible. Synthetic tests use no game assets or credentials
 ## CI coverage
 
 [The Windows workflow](../.github/workflows/ci.yml) builds Debug and Release,
-checks C++ formatting and document links, runs the unit-labeled tests, and checks
+for standard and X editions, checks C++ formatting and document links, runs the unit-labeled tests, and checks
 that installation produces a single system-dependent x86 DLL with the expected
 optional exports. The Release candidate is retained as a workflow artifact.
 
@@ -66,7 +74,14 @@ The [helper source](../tools/retail_loadlibrary_test.cpp) restricts launches to
 `Darkages.exe`, creates it suspended, injects by remote `LoadLibraryA`, checks the
 module result, resumes startup and verifies native resizing. It calls no
 initialization export. It also checks every intermediate pixel dimension in a
-short width/height sequence and records graphics module paths.
+short width/height sequence, then exercises native popup/fullscreen maximize,
+minimize/restore and exact return to windowed dimensions. It records graphics
+module paths. This emulates the reported launcher operations; it is not an
+execution of AoSda itself.
+
+For review without any helper resizing or fullscreen transitions, substitute
+`--launch-native`. This checks that the actual game starts at exactly 640×480
+client pixels and leaves it at that size, with the caption outside the game area.
 
 **The launched client stays open.** The helper creates local bitmap/log evidence
 when invoked from a test folder; none is a runtime distribution dependency.
@@ -106,6 +121,8 @@ Hardware operations are performed by the tester; they are not triggered by CTest
 - [0.2.0 loading/recovery record](standalone-validation.md): multiclient startup,
   fault injection, user interruption observations and remaining limits.
 - [Historical 0.1.x validation](validation.md): prototype paths and earlier cursor work.
+- [Current X/borderless candidate](x-borderless-validation.md): edition-specific
+  behavior, import guards, fullscreen ordering and runtime acceptance limits.
 
 Raw runtime logs, captures, generated packages and research checkouts are local
 development artifacts, excluded from the repository. Their paths in historical

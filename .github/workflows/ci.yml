@@ -35,27 +35,55 @@ jobs:
         include:
           - preset: release
             configuration: Release
+            configure: windows-x86
+            unit: unit-release
+            build: build/windows-x86
+            package: dist/local
+            edition: standard
+            dll: DAWindower.dll
           - preset: debug
             configuration: Debug
+            configure: windows-x86
+            unit: unit-debug
+            build: build/windows-x86
+            package: dist/local
+            edition: standard
+            dll: DAWindower.dll
+          - preset: x-release
+            configuration: Release
+            configure: windows-x86-x
+            unit: x-unit-release
+            build: build/windows-x86-x
+            package: dist/local-x
+            edition: x
+            dll: DAWindowerX.dll
+          - preset: x-debug
+            configuration: Debug
+            configure: windows-x86-x
+            unit: x-unit-debug
+            build: build/windows-x86-x
+            package: dist/local-x
+            edition: x
+            dll: DAWindowerX.dll
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Configure standalone x86 build
-        run: cmake --preset windows-x86
+        run: cmake --preset ${{ matrix.configure }}
       - name: Build DLL and all native test binaries
         run: cmake --build --preset ${{ matrix.preset }}
       # Hosted CI does not certify an interactive desktop or retail rendering.
       - name: Run no-desktop unit tests
-        run: ctest --preset unit-${{ matrix.preset }}
+        run: ctest --preset ${{ matrix.unit }}
       - name: Install candidate package
-        run: cmake --install build/windows-x86 --config ${{ matrix.configuration }}
+        run: cmake --install ${{ matrix.build }} --config ${{ matrix.configuration }}
       - name: Verify one DLL, x86 ABI and Windows-only imports
-        run: python tools/check_package.py dist/local
+        run: python tools/check_package.py ${{ matrix.package }} --edition ${{ matrix.edition }}
       - name: Retain Release candidate
-        if: matrix.preset == 'release'
+        if: matrix.configuration == 'Release'
         uses: actions/upload-artifact@v4
         with:
-          name: DAWindower-x86-candidate
-          path: dist/local/DAWindower.dll
+          name: DAWindower-${{ matrix.edition }}-x86-candidate
+          path: ${{ matrix.package }}/${{ matrix.dll }}
           if-no-files-found: error

@@ -11,10 +11,12 @@ the completed logical frame reaches the desktop.
 | Entry points and runtime setup | [main.cpp](../src/main.cpp), [runtime.h](../src/runtime.h), [public exports](../include/dawindower.h) | Setup outside loader lock; optional exports are not launcher requirements. |
 | Early loading gates | [bootstrap.cpp](../src/compatibility/bootstrap.cpp) | Fixed storage, bounded reads and Kernel32-only pointer swaps in process attach. |
 | Import hooks and singleton adapter | [imports.cpp](../src/compatibility/imports.cpp), [mutex.cpp](../src/compatibility/mutex.cpp) | Replace only the expected import; isolate only the verified game mutex. |
+| Client geometry ownership | [geometry.cpp](../src/compatibility/geometry.cpp) | Adapt only tracked HWNDs reached through the executable's window-management imports. |
 | Device and surface wrappers | [draw.cpp](../src/graphics/draw.cpp), [surface.cpp](../src/graphics/surface.cpp) | Public COM identity survives native backing repair. |
 | Logical GDI/cursor writes | [gdi.cpp](../src/graphics/gdi.cpp) | Game reads and writes logical pixels, including when the window is scaled or occluded. |
 | Window lifetime and presentation | [window.cpp](../src/window/window.cpp), [window.h](../src/window/window.h) | Per-window canvas, queued presentation, desktop recovery hints and native frame cursors. |
 | Size/input math and retries | [geometry.cpp](../src/window/geometry.cpp), [sizing.cpp](../src/window/sizing.cpp), [retry.h](../src/graphics/retry.h) | One transform for pixels and input; bounded retry scheduling. |
+| Borderless layout and mode detection | [frame.cpp](../src/window/frame.cpp), [aspect.cpp](../src/window/aspect.cpp) | Windowed 4:3 resizing, no visible border, and launcher-owned fullscreen. |
 
 ## Loading and initialization
 
@@ -132,11 +134,37 @@ Session/display/device/power/activation messages supply additional hints.
 
 ## Window and input behavior
 
-The subclass makes the existing top-level window resizable. Windows supplies
-normal tracking limits; there is no custom aspect-ratio or size grid. The logical
-640×480 image fills any positive client size, independently on each axis.
+The subclass makes the existing top-level window resizable. Shared aspect math
+and sizing handlers preserve the native 4:3 **client** ratio, excluding the title
+bar/frame. Side drags follow their axis. Corners project onto the closest 4:3
+size while keeping the opposite corner anchored. This continuous calculation
+avoids switching axes against the previously adjusted size, which caused a
+reproduced outward drag to jump from 641×481 backward to 640×480. Nearest-pixel
+rounding avoids a fixed four-pixel size grid.
+Programmatic single-axis changes couple the other dimension; conflicting size
+boxes fit a 4:3 client. Maximize centers the largest fitted window within monitor
+work bounds. The logical 640×480 image fills the actual client rectangle.
 Nearest-neighbor scaling preserves source colors but noninteger scale factors
 necessarily produce uneven destination pixel widths/heights.
+
+Standard reserves its native Windows caption; X reserves its custom caption.
+Neither reserves side/bottom frame pixels. Both keep
+invisible edge hit regions and native Windows resizing. A maximized or exactly
+monitor-sized bare popup at attach is preserved. After attach, a launcher can
+select fullscreen by replacing the style with bare `WS_POPUP` (without
+`WS_THICKFRAME`). Fullscreen suspends windowed constraints and X's caption;
+maximizing this popup uses monitor bounds rather than the work area. Returning
+the resize capability selects windowed sizing again. This is an observable
+window-style contract, not launcher identification or a polling race.
+
+The executable's MoveWindow, ShowWindow and SetWindowLongA imports have scoped
+adapters installed during normal runtime setup. For tracked windows, MoveWindow
+cannot overwrite selected geometry; style/extended-style writes return the
+unchanged previous value. Other indices pass through. ShowWindow normal/maximize
+commands become show-at-current-placement; hide/minimize and restoring from
+minimize retain native semantics. Unknown windows and direct USER32 calls from
+launchers, Windows and X bypass these adapters. The inspected 7.41 executable's
+two SetWindowLongA call sites use GWL_USERDATA, which remains untouched.
 
 `viewport` and `toGame` are the single geometry contract. Button presses outside
 the image are excluded. Wheel messages retain their Win32 screen-coordinate ABI
@@ -148,6 +176,12 @@ changed after window creation.
 increments needed over a border or during a resize drag, then balances only its
 own calls. The host still owns client-area cursor messages. It must not force a
 guessed `ShowCursor` baseline or add an OS cursor over the game's software cursor.
+
+The optional [X edition](x-edition.md) adds its own non-client subclass after the
+renderer attaches. Its caption-only `WM_NCCALCSIZE` leaves game pixels flush with
+both sides and the bottom; invisible edge hit regions retain native resizing.
+It shares aspect/recovery/input code with standard DAWindower. Its launch worker
+owns only a newly created child; it never paints or changes the parent cursor.
 
 For exact loading details, read [integration](integration.md). For historical
 implementation choices, read [the recovery design](standalone-recovery-design.md).
