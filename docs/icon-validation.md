@@ -98,8 +98,10 @@ These checks do not recertify UAC, physical monitor transitions, complete
 launcher workflows or every Windows/DPI/theme combination on these binaries.
 Earlier recovery and X control observations retain their original scope in the
 [standalone](standalone-validation.md) and [X](x-borderless-validation.md) records.
-The [README screenshots](images/README.md) retain their original capture hashes
-and predate this icon/caption change.
+The [README screenshots](images/README.md) were refreshed from the final two
+clients above, with both game icons visible. Original captures are unretouched;
+the comparison panel preserves their pixels exactly and records the loaded DLL
+hashes and game-area alignment.
 
 Logs, rejected experiments, retail assets and test executables remain ignored
 local artifacts. Only source, original synthetic icon fixtures and documentation

@@ -13,7 +13,7 @@ and an optional edition with extra window controls.
 
 </div>
 
-[![Real Dark Ages clients: DAWindower with native Windows controls on the left, DAWindower X with its dark title bar and extra controls on the right](docs/images/editions-comparison.png)](docs/images/editions-comparison.png)
+[![Real Dark Ages clients with their game icons: DAWindower with native Windows controls on the left, DAWindower X with its dark title bar and extra controls on the right](docs/images/editions-comparison.png)](docs/images/editions-comparison.png)
 
 <p align="center"><sub>Real 7.41 clients. Matching 640×480 game areas. <a href="docs/images/README.md">Capture details and build versions.</a></sub></p>
 
