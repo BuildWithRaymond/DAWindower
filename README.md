@@ -1,26 +1,19 @@
 # DAWindower
 
-**Dark Ages on your desktop. One DLL.**
+**Dark Ages on your desktop. One DLL per client.**
 
-DAWindower is a native windowing and rendering compatibility layer for the
-32-bit Dark Ages client. It focuses on rendering recovery across desktop
-interruptions and open-source maintenance while preserving familiar window,
-graphics, cursor and mouse behavior.
+DAWindower is an open-source alternative to `dawnd.dll` for the 32-bit Dark Ages
+client. It keeps the familiar launcher integration and windowed game experience,
+with a renderer designed to recover after desktop interruptions. The optional
+**DAWindower X** edition adds a dark title bar and useful client controls.
 
 **Windows · x86 · C++17 · MIT · Windows system dependencies only**
 
-[![Windows build and source checks](https://github.com/BuildWithRaymond/DAWindower/actions/workflows/ci.yml/badge.svg)](https://github.com/BuildWithRaymond/DAWindower/actions/workflows/ci.yml)
+[![Windows build and source checks](https://github.com/BuildWithRaymond/DAWindower/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/BuildWithRaymond/DAWindower/actions/workflows/ci.yml?query=branch%3Amain)
 
-**[Download v0.2.2 preview](https://github.com/BuildWithRaymond/DAWindower/releases/tag/v0.2.2)** ·
-[GitHub repository](https://github.com/BuildWithRaymond/DAWindower)
-
-[Build](#build-and-test) · [Launcher integration](docs/integration.md) ·
-[Contribute](CONTRIBUTING.md) · [Code tour](docs/architecture.md) ·
-[Test evidence](docs/smooth-resize-validation.md)
-
-Source development includes borderless standard windows, native 4:3 sizing and
-the optional X edition. The linked 0.2.2 preview predates these changes; see the
-[current validation record](docs/x-borderless-validation.md) for candidate status.
+[Choose an edition](#choose-an-edition) · [Downloads and status](#downloads-and-status) ·
+[Launcher integration](#use-it-with-an-existing-launcher) · [Build](#build-and-test) ·
+[Contribute](CONTRIBUTING.md) · [Test evidence](docs/x-borderless-validation.md)
 
 ## With love for dawnd
 
@@ -29,142 +22,209 @@ Dark Ages. It gave players windowed clients, made multiple clients practical,
 and kept getting passed along in the launchers people relied on. That kind of
 staying power deserves respect.
 
-DAWindower carries that usefulness forward. The goal is familiar Dark Ages
-behavior with recoverable rendering, a dependable loading contract, and source
-that the next contributor can understand. Thank you to **Saraet, creator of
-dawnd.dll**, and to everyone who kept it in players' hands.
+Thank you to **Saraet, creator of dawnd.dll**, and to everyone who kept it in
+players' hands. DAWindower carries that usefulness forward with recoverable
+rendering and source the next contributor can understand.
 [Credits and research acknowledgments](CREDITS.md).
 
-## What you get
+## Choose an edition
 
-- **Automatic recovery per window.** Retained pixels, surface restoration and bounded
-  presentation retries handle loss and desktop interruptions. Recovery watches secure
-  desktop/UAC, lock/unlock, display/device changes and restore events for background clients too.
-- **Open-source maintenance.** MIT C++17 source, documented ownership, reproducible
-  builds and regression tests make the implementation available to inspect and improve.
-- **Familiar single-DLL integration.** Ordinary early `LoadLibraryA` injection;
-  no extra initialization call, proxy DLL, configuration file, runtime package,
-  or launcher-specific dependency.
+Both editions share the same renderer, recovery, mouse mapping and loading
+contract. Choose **one DLL** for each client; X is an alternative to standard,
+not an add-on that needs both files.
 
-dawnd already supplies windowed play, multiple clients, cursor handling,
-full-window graphics and native resize arrows. DAWindower preserves those
-expectations, including the native 4:3 aspect ratio. Its logical frame stays
-640×480 RGB565 with nearest-neighbor presentation and matching mouse mapping.
-Dragging couples width and height with nearest-pixel rounding; maximizing fits
-the largest 4:3 client within the monitor work area. Both editions keep title
-bars: native Windows in standard, custom Dark Ages in X. Game pixels reach both
-sides and the bottom; invisible edges retain resizing. Alt+Space opens Windows
-move, size, minimize and close commands. Corners follow the closest 4:3 size
-continuously, without switching axes or jumping between preset dimensions.
-
-A launcher's explicit borderless fullscreen request keeps its monitor bounds
-and hides X's caption too. Fullscreen uses the whole client rectangle, including
-non-4:3 monitors; the 4:3 sizing rule applies to ordinary windowed mode.
-Networking, gameplay and automation paths are not hooked.
-
-## What changes from dawnd
-
-Both DLLs share the important baseline: a small 32-bit library, ordinary launcher
-injection, windowed play, and support for multiple client processes. Here is where
-DAWindower's implementation differs from the inspected legacy binary.
-
-| Area | Inspected dawnd | DAWindower |
+| | DAWindower | DAWindower X |
 | --- | --- | --- |
-| Desktop presentation | Its converted-primary path draws into a separate real DirectDraw primary. | A retained RGB565 canvas presents through GDI into each window. |
-| Failed presentation | That private-primary path discards the presentation result; no repair path was found for the private surface. | Failed presentations retain the frame and retry with bounded backoff, even without new game writes. |
-| Lost surface content | No wrapper-owned pixel backup/repopulation was found in that path. | Completed pixel writes are retained; recovery reapplies color keys and keeps public COM identities stable. |
-| Resizing | Full-window presentation with 4:3 constraints. | Full-window presentation with 4:3 constraints and smooth nearest-pixel sizing. |
-| Initialization | Import hooks are installed during process attach. | Only small import gates run at attach; full setup finishes synchronously at the first factory call outside loader lock. |
-| Contribution | Research examined a bundled binary; original source was not found in the references searched. | MIT source, documented ownership, reproducible builds, and regression tests are included. |
+| Distributable | `DAWindower.dll` | `DAWindowerX.dll` |
+| Title bar | Native Windows title bar and controls | Charcoal-to-black gradient with custom controls |
+| Character title | The client's existing title | `Dark Ages · CharacterName` on the supported client; otherwise `Dark Ages` |
+| New client button | Use your launcher | **+** starts another client from the same game folder with X injected |
+| Native-size button | Resize through Windows | **1:1** returns the game area to **640×480** |
+| Button tooltips | Native Windows behavior | Descriptions for all five title-bar buttons |
 
-These are scoped findings, not a claim that every dawnd setup fails. The user
-reported interruption recovery working with DAWindower where their dawnd setup
-did not. The exact UAC, display and monitor event matrix was not individually
-logged. See the [original investigation](docs/investigation.md),
-[recovery assessment](docs/rendering-recovery-assessment.md), and
-[loading/recovery record](docs/standalone-validation.md) for evidence and limits.
+Ordinary windowed clients **keep their title bars**. Both editions remove visible
+side/bottom frame insets while retaining invisible resize grips and visible
+resize arrows. Windows start at native **640×480** game dimensions, resize
+smoothly at the native **4:3 aspect ratio**, and maximize to the largest 4:3 game
+area that fits the monitor work area. There are no preset size steps.
+
+X's title-bar layout:
+
+```text
+Dark Ages · CharacterName          [+] [1:1]   [−] [□] [×]
+```
+
+X's New client button starts the game directly. It does not carry over launcher
+arguments, credentials or automatic login. Character-name support currently
+targets the inspected **7.41** client; unknown layouts display `Dark Ages`.
+See [X controls and client support](docs/x-edition.md).
+
+An explicit launcher-selected borderless fullscreen mode keeps its monitor
+bounds and hides the title bar. That mode fills the monitor, including non-4:3
+displays; ordinary windowed resizing keeps 4:3. See the
+[fullscreen integration contract](docs/integration.md#borderless-windows-and-launcher-fullscreen)
+for ordering requirements and limits.
+
+## Why use DAWindower?
+
+- **Recovery belongs to each window.** Completed pixel writes are retained, lost
+  surfaces can be restored, and failed presentations retry with bounded backoff.
+  Recovery watches secure-desktop/UAC, lock/unlock, display/device and restore
+  events, including for background clients.
+- **Keep the existing loading contract.** Early `LoadLibraryA` injection alone
+  initializes either edition. There is no required initializer call, separate
+  `ddraw.dll` proxy, configuration file, companion executable or external runtime.
+  Talos, Zeus and other specific launchers are not required.
+- **Source you can maintain.** MIT-licensed C++17, documented ownership, native
+  regression tests and one-file package checks make changes inspectable and
+  reproducible.
+- **Optional controls without a different renderer.** X adds character titles,
+  native-size reset and New client while sharing standard's graphics and recovery.
+
+The game still draws a **640×480 RGB565** logical frame. Presentation uses GDI
+and nearest-neighbor scaling, with mouse coordinates mapped to that same game
+area. Networking, gameplay and automation paths are not hooked.
+
+### What this changes from dawnd
+
+dawnd already provides windowed play, multiple clients, cursor handling,
+full-window graphics, aspect-ratio constraints and resize arrows. DAWindower
+preserves that baseline. Its main differences are recovery, open-source
+maintenance and the optional X controls.
+
+The recovery comparison comes from the inspected legacy binary:
+
+| Area | Inspected dawnd path | DAWindower |
+| --- | --- | --- |
+| Presentation | Draws a converted primary into a separate real DirectDraw primary. | Presents a retained RGB565 canvas through GDI into each window. |
+| Presentation failure | Discards the private-primary presentation result; no repair path was found for that surface. | Retains the frame and retries with bounded backoff, even without new game writes. |
+| Surface contents | No wrapper-owned pixel backup/repopulation was found in that path. | Retains completed writes and reapplies color keys while keeping public COM identities stable. |
+| Maintenance | Original source was not found in the references searched. | MIT source, contributor documentation and regression tests are included. |
+
+These findings do not mean every dawnd setup fails. Manual testing reported
+recovery working with DAWindower where the tester's dawnd setup did not; the
+individual UAC/display events were not logged. Read the
+[recovery assessment](docs/rendering-recovery-assessment.md) and
+[loading/recovery evidence](docs/standalone-validation.md) for the scope of that
+comparison.
+
+## Downloads and status
+
+**Current `main`: 0.2.3 candidate source, including both editions.** The title bars,
+4:3 resize behavior, launcher-fullscreen handling and X controls described above
+are in this source. Build instructions for both editions are below.
+
+**Published binary: [v0.2.2 standard preview](https://github.com/BuildWithRaymond/DAWindower/releases/tag/v0.2.2).**
+That download predates X and the current title-bar, aspect-ratio and fullscreen
+changes. It is an earlier preview, not a binary of current `main`. A 0.2.3 release
+has not been published.
+
+For current source, [GitHub Actions](https://github.com/BuildWithRaymond/DAWindower/actions/workflows/ci.yml?query=branch%3Amain)
+builds both editions in Debug and Release, checks source/docs, and retains
+Release candidate artifacts. CI artifacts are build outputs; actual-client
+acceptance is recorded separately in the
+[current validation record](docs/x-borderless-validation.md).
 
 ## Use it with an existing launcher
 
-Distribute **only `DAWindower.dll`** and replace your launcher's old dawnd resource
-or injection path with it. The established sequence stays the same:
+Replace your launcher's dawnd resource or injection path with **either
+`DAWindower.dll` or `DAWindowerX.dll`**. Distribute only the chosen DLL. The
+established sequence stays the same:
 
 1. Create Dark Ages suspended.
 2. Inject the absolute DLL path with the usual remote `LoadLibraryA` thread.
 3. Wait for a nonzero module handle, release the injection resources, and resume
    the client's main thread.
 
-No call to `DAWindowerInitialize` is required. Finish injection before startup
-reaches the singleton check or graphics creation. Talos and Zeus are not required.
-Use one compatibility DLL per client; consult the
-[integration guide](docs/integration.md) for the precise contract and optional exports.
+**No `DAWindowerInitialize` call is needed.** Finish injection before startup
+reaches the singleton check or graphics creation. Use one compatibility DLL per
+client. The [integration guide](docs/integration.md) covers exact ordering,
+fixed `dawnd.dll` filenames, launcher-selected fullscreen and optional exports.
 
 ## Build and test
 
-An optional **DAWindower X** edition adds a borderless charcoal-to-black gradient
-title bar displaying **Dark Ages · CharacterName**, native-size reset, New client
-button, and dark button tooltips. It shares this renderer and remains a
-single DLL. X is under development; see its [controls, client support and build
-instructions](docs/x-edition.md). Standard keeps its native title bar.
+Install Visual Studio 2022 or Build Tools with **Desktop development with C++**,
+the Windows SDK, and **CMake 3.24+**. Use a Developer PowerShell with CMake on
+`PATH`. Both presets select **Win32**, even on a 64-bit machine.
 
-Install Visual Studio 2022 or its Build Tools with **Desktop development with C++**,
-the Windows SDK, and CMake 3.24 or newer. Use a Developer PowerShell with CMake on
-`PATH`. The shared preset selects **Win32**, even on a 64-bit machine.
+Run the commands for your edition from the repository root.
 
-From this repository's root:
+### Standard
 
 ```powershell
 cmake --preset windows-x86
 cmake --build --preset release
 ctest --preset release
 cmake --install build/windows-x86 --config Release
+python tools/check_package.py dist/local --edition standard
 ```
 
-The installed runtime package is:
+Distribute **`dist/local/DAWindower.dll`**.
 
-```text
-dist/local/
-└── DAWindower.dll
+### X
+
+```powershell
+cmake --preset windows-x86-x
+cmake --build --preset x-release
+ctest --preset x-release
+cmake --install build/windows-x86-x --config Release
+python tools/check_package.py dist/local-x --edition x
 ```
 
-The full suite uses native DirectDraw/GDI windows and needs an interactive Windows
-desktop. CI runs the no-desktop unit tests, source checks and package checks;
-retail acceptance remains a separate runtime check. For Debug builds, focused
-tests, formatting, diagnostics and build troubleshooting, start with
-[the development guide](docs/development.md) and [testing guide](docs/testing.md).
+Distribute **`dist/local-x/DAWindowerX.dll`**.
+
+Each install directory contains exactly one DLL. The CRT is statically linked;
+only Windows system components are runtime dependencies. The optional Python
+package-check command validates the build output; Python is a development tool,
+not a requirement for players or launchers.
+
+Full tests create native DirectDraw/GDI windows and require an interactive
+Windows desktop. Without one, use `ctest --preset unit-release` or
+`ctest --preset x-unit-release`. You do not need Dark Ages installed to build
+or run the synthetic tests. See the [development guide](docs/development.md)
+for Debug builds and formatting, and the [testing guide](docs/testing.md) for
+focused checks and actual-client acceptance.
 
 ## Verified behavior and current limits
 
-Version **0.2.2** passed **13/13 contracts in both Debug and Release**. Its
-164,352-byte x86 package was loaded into an isolated actual Dark Ages client with
-`LoadLibraryA` alone. The user confirmed smooth full-window resizing, correct
-game mouse behavior, and visible resize arrows in the tested builds.
+The current validation record separates automated tests, actual-client checks
+and manual observations:
 
-Earlier recovery testing also covered simultaneous actual clients and 20
-concurrent synthetic clients. The acceptance records distinguish automated
-fault injection, actual-client loading, and manual observations. They do not
-certify every GPU, monitor arrangement or client version.
+| Evidence | Recorded result |
+| --- | --- |
+| Standard native contracts | 19/19 in Debug and Release. |
+| X native contracts | 21/21 in Release. Debug initially passed 20/21; the remaining child-launch test passed after correcting its fixture timeout. Tooltip-related checks passed in both configurations after the final fix. |
+| Actual 7.41 client loading | Both editions loaded through remote `LoadLibraryA` alone, with zero initialization calls and no adjacent proxy DLL. |
+| Actual window behavior | Native 640×480 startup, intermediate aspect sizes, launcher-style fullscreen and minimize/restore were checked. Manual testing confirmed both title bars and smooth resizing. |
+| X tooltip acceptance | All five corrected tooltips were confirmed on the actual client. |
+| Hosted CI | Builds both editions in Debug/Release and runs no-desktop unit, source, documentation and package checks. |
+
+Exact candidate hashes, build scopes and the initial X prototype's character
+title/New client/native-reset observations are in the
+[current validation record](docs/x-borderless-validation.md). Earlier recovery
+tests included simultaneous actual clients and 20 concurrent synthetic clients;
+those observations remain scoped to their recorded builds.
 
 Current boundaries:
 
-- The verified client uses v1 `IDirectDraw`/`IDirectDrawSurface` and named factory
-  imports. Late injection, newer interfaces and dynamic factory lookup are outside
-  the verified loading contract.
+- Actual AoSda launch ordering and the complete UAC, lock/unlock, refresh-rate
+  and monitor-change matrix have not been rerun on this candidate. Native
+  launcher-style fixtures do not certify a specific launcher's full workflow.
+- The verified graphics client uses v1 `IDirectDraw`/`IDirectDrawSurface` and
+  named factory imports. Late injection, dynamic factory lookup and newer
+  interfaces are outside the verified loading contract.
 - Recovery defers while the client holds native Lock memory or a GetDC lease.
   Uncommitted writes destroyed during that lease cannot be reconstructed; an
   indefinitely retained invalid HDC needs client cooperation.
-- Timers need the game's message pump to continue running. Sustained 10–20-client
-  performance and a complete physical display-interruption matrix remain unmeasured.
-
-[Current resize/cursor acceptance](docs/smooth-resize-validation.md) ·
-[Standalone loading/recovery acceptance](docs/standalone-validation.md) ·
-[Release history](CHANGELOG.md)
+- Recovery timers need the game's message pump. Sustained 10–20-client
+  performance and every hardware/client combination remain unmeasured.
 
 ## Find your first contribution
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md). Documentation corrections, focused
-regressions, reproducible client reports and measured performance work all help.
-You do not need the game installed to build or run the synthetic native tests.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). Documentation corrections,
+focused regressions, reproducible client reports and measured performance work
+all help. Keep fixes small, preserve the single-DLL contract, and distinguish
+observed behavior from assumptions in test reports.
 
 | If you want to understand… | Start here |
 | --- | --- |
@@ -172,6 +232,7 @@ You do not need the game installed to build or run the synthetic native tests.
 | Where frames and cursor updates meet | [Frame flow](docs/architecture.md#frames-and-cursor-composition) |
 | How recovery preserves objects and pixels | [Recovery ownership](docs/architecture.md#recovery-and-object-lifetime) |
 | How resizing and mouse mapping agree | [Window behavior](docs/architecture.md#window-and-input-behavior) |
+| How X's title bar and controls work | [X edition](docs/x-edition.md#code-and-validation) |
 | Which test protects a change | [Test map](docs/testing.md#automated-test-map) |
 | Which reports are current or historical | [Documentation index](docs/README.md) |
 
